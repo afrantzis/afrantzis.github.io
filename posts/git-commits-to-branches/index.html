@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/afrantzis.css">
+      <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,400|Roboto:300,300i,400&amp;subset=greek" rel="stylesheet"> 
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - git-c2b: An alternative workflow for Chromium&#x27;s Gerrit</title>
+<meta name="description" content="A tool to create dependent git branches from commits">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/posts">Posts</a></li>
+                <li><a href="/projects">Projects</a></li>
+                <li><a href="/about">About</a></li>
+                <li class="feed">
+                    <a href="/atom.xml">
+                        <img style="height:0.75em" src="/feed.png">
+                    </a>
+                </li>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         git-c2b: An alternative workflow for Chromium&#x27;s Gerrit
+    </h1>
+    <span class="post-date">
+        September 14, 2018
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;git-commits-to-branches&#x2F;>
+            <img style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>There are two main options to handle reviews in git. The first option is to
+treat commits as the unit of review. In this <em>commit-based flow</em>, authors work on
+a branch with multiple commits and submit them for review, either by pushing
+the branch or by creating a patch series for these commits. Typically, each
+commit is expected to be functional and to be reviewable independently.</p>
+<p>Here is a feature branch in a commit-based flow, before and after changing D to
+D' with an interactive rebase (E and F are also changed by the rebase, to E'
+and F'):</p>
+<div class="nowrap">
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">A-B-C       [master]       A-B-C          [master] 
+</span><span style="color:#1f1f1f;">     \                          \                  
+</span><span style="color:#1f1f1f;">      D-E-F [feature]            D&#39;-E&#39;-F&#39; [feature] or [feature-v2]
+</span></pre></div>
+<p>The second option is to treat branches as the unit of review.  In this
+<em>branch-based flow</em>, authors work on multiple dependent branches and submit them
+for review by pushing them to the review system. The individual commits in each
+branch don't matter; only the final state of each branch is taken into account.
+Some review systems call this the &quot;squash&quot; mode.</p>
+<p>Here are some dependent branches for a feature in a branch-based flow, before
+and after updating feature-1 by adding D', and then updating the other branches
+by merging (we could rebase, instead, if we don't care about retaining
+history):</p>
+<div class="nowrap">
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">A-B-C       [master]       A-B-C           [master]
+</span><span style="color:#1f1f1f;">     \                          \
+</span><span style="color:#1f1f1f;">      D     [feature-1]          D--D&#39;     [feature-1]
+</span><span style="color:#1f1f1f;">       \                          \  \
+</span><span style="color:#1f1f1f;">        E   [feature-2]            E--E&#39;   [feature-2]
+</span><span style="color:#1f1f1f;">         \                          \  \
+</span><span style="color:#1f1f1f;">          F [feature-3]              F--F&#39; [feature-3]
+</span></pre></div>
+<p>Some people prefer to work this way, so they can update their submission
+without losing the history of each individual change (e.g., keep both D and
+D'). This reason is unconvincing, however, since one can easily preserve
+history in a commit-based flow, too, by checking out a different branch (e.g.,
+'feature-v2') to work on.</p>
+<p>Personally, I find branch-based flows a pain to work with. Their main fault is
+the distracting and annoying user experience when dealing with multiple
+dependent changes. Setting up and maintaining the dependent branches during
+updates is far from straightforward. What would normally be a simple 'git
+rebase -i', now turns into a fight to create and maintain separate dependent
+branches.  There are tools that can help (git-rebase-update), but they are no
+match for the simplicity and efficiency of rebasing interactively in a single
+branch.</p>
+<p>Chromium previously used the Rietveld review system, which uses branches as its
+unit of review. Recently Chromium switched to Gerrit, but, instead of sticking
+with Gerrit's native commit-based flow, it adapted its tools to provide a
+branch-based flow similar to Rietveld's. Interacting with Chromium's review
+system is done mainly through the git-cl tool which evolved over the years to
+support both flows. At this point, however, the commit-based flow is
+essentially unsupported and broken for many use cases. Here is what working on
+Chromium typically looks like:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#7f8989;"># Create and work on first branch
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout</span><span style="color:#5597d6;"> -b</span><span style="color:#1f1f1f;"> feature</span><span style="color:#5597d6;"> -t</span><span style="color:#1f1f1f;"> origin/master
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Feature&#39;
+</span><span style="color:#5597d6;">...
+$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Update to feature&#39;
+</span><span style="color:#5597d6;">...
+</span><span style="color:#7f8989;"># Create and work on second (dependent) branch
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout</span><span style="color:#5597d6;"> -b</span><span style="color:#1f1f1f;"> feature-next</span><span style="color:#5597d6;"> -t</span><span style="color:#1f1f1f;"> feature
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Feature next&#39;
+</span><span style="color:#5597d6;">...
+$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Update to feature next&#39;
+</span><span style="color:#5597d6;">...
+</span><span style="color:#7f8989;"># Upload the changes for review
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout feature
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git cl upload</span><span style="color:#5597d6;"> --dependencies
+</span></pre>
+<p>I wrote the <a href="https://github.com/afrantzis/git-c2b">git-c2b</a>
+(commits-to-branches) tool to be able to maintain a commit-based git flow even
+when working with branch-based review systems, such as Chromium's Gerrit. The
+idea, and the tool itself, is simple but effective. It allows me to work as
+usual in a single branch, splitting changes into commits and amending them as I
+like. Just before submitting, I run git-c2b to produce separate dependent
+branches for each commit. If the branches already exist they are updated
+without losing any upstream metadata.</p>
+<p>This is my current workflow with Chromium and git-c2b:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#7f8989;"># Create patchset in branch
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout</span><span style="color:#5597d6;"> -b</span><span style="color:#1f1f1f;"> feature</span><span style="color:#5597d6;"> -t</span><span style="color:#1f1f1f;"> origin/master
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Change 1&#39;
+</span><span style="color:#5597d6;">...
+$</span><span style="color:#1f1f1f;"> git commit</span><span style="color:#5597d6;"> -m </span><span style="color:#d07711;">&#39;Change 2&#39;
+</span><span style="color:#5597d6;">...
+</span><span style="color:#7f8989;"># Use git-c2b to create branches feature-1, feature-2, ... for each commit
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git c2b
+</span><span style="color:#7f8989;"># Upload the changes for review
+</span><span style="color:#1f1f1f;">$ git checkout feature-1
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git cl upload</span><span style="color:#5597d6;"> --dependencies
+</span></pre>
+<p>To update the patches and dependent CLs:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout feature
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git rebase</span><span style="color:#5597d6;"> -i</span><span style="color:#1f1f1f;"> origin/master
+</span><span style="color:#5597d6;">...
+</span><span style="color:#7f8989;"># Use c2b to update the feature-1, feature-2, ... branches
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git c2b
+</span><span style="color:#7f8989;"># Upload the changes for review
+</span><span style="color:#1f1f1f;">$ git checkout feature-1
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git cl upload</span><span style="color:#5597d6;"> --dependencies
+</span></pre>
+<p>When changes start to get merged, I typically need to reupload only the commits
+that are left. For example, if the changes from the first two commits get
+merged, I will rebase on top of master, and the previously third
+commit will now be the first. You can tell git-c2b to start updating branches
+starting from a particular number using the -n flag:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#7f8989;"># The first two changes got merged, get new master and rebase on top of it
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git fetch
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git checkout feature
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git rebase</span><span style="color:#5597d6;"> -i</span><span style="color:#1f1f1f;"> origin/master
+</span><span style="color:#5597d6;">...
+</span><span style="color:#7f8989;"># At this point the first two commits will be gone, so tell c2b to update
+# feature-3 from the first commit, feature-4 from the second and so on.
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git c2b</span><span style="color:#5597d6;"> -n</span><span style="color:#1f1f1f;"> 3
+</span><span style="color:#7f8989;"># Upload the remaining changes for review
+</span><span style="color:#1f1f1f;">$ git checkout feature-3
+</span><span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> git cl upload</span><span style="color:#5597d6;"> --dependencies
+</span></pre>
+<p>Although the main driver for implementing
+<a href="https://github.com/afrantzis/git-c2b">git-c2b</a> was improving my Chromium
+workflow, there is nothing Chromium-specific about this tool. It can be used as
+a general solution to create dependent branches from commits in any branch.
+Enjoy!</p>
+
+</div>
+
+
+        </div>
+    </body>
+</html>

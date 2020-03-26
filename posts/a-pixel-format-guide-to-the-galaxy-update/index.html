@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/afrantzis.css">
+      <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,400|Roboto:300,300i,400&amp;subset=greek" rel="stylesheet"> 
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - A Pixel Format Guide (to the galaxy) – Update</title>
+<meta name="description" content="A look at the new features of the Pixel Format Guide documents and accompanying tool">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/posts">Posts</a></li>
+                <li><a href="/projects">Projects</a></li>
+                <li><a href="/about">About</a></li>
+                <li class="feed">
+                    <a href="/atom.xml">
+                        <img style="height:0.75em" src="/feed.png">
+                    </a>
+                </li>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         A Pixel Format Guide (to the galaxy) – Update
+    </h1>
+    <span class="post-date">
+        October  5, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;a-pixel-format-guide-to-the-galaxy-update&#x2F;>
+            <img style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A few weeks ago I introduced the <a href="https://afrantzis.github.io/pixel-format-guide/">Pixel Format
+Guide</a> — a collection of
+documents and the accompanying
+<a href="https://github.com/afrantzis/pixel-format-guide">pfg</a> tool which aim to help
+people navigate the wilderness of pixel format definitions. In this post I will
+list the most exciting improvements that have been made since the original
+announcement.</p>
+<h2 id="new-pixel-format-families">New pixel format families</h2>
+<p>The core mission of the Pixel Format Guide is to become a comprehensive
+reference for pixel format definitions. Therefore, it's no surprise that I have
+put a lot of effort into adding more pixel format families. At the time the
+previous post was written, the Pixel Format Guide supported 3 formats: Vulkan,
+OpenGL and Wayland-DRM. Since then, I have added the Cairo, DirectFB, Pixman,
+SDL2 and V4L2 pixel format families, bringing the total number of supported
+families to 8 and the total number of supported pixel format definitions to
+459!</p>
+<h2 id="bit-indices">Bit indices</h2>
+<p>While working with packed pixel formats, I noticed that the ordering of the
+component bits is sometimes difficult to figure out. This happens especially
+when the bits of a component are split between multiple bytes, like, for
+example, in an RGB565 16-bit format:</p>
+<div class="nowrap">
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">Format:               SDL_PIXELFORMAT_RGB565
+</span><span style="color:#1f1f1f;">Described as:         Native 16-bit type
+</span><span style="color:#1f1f1f;">Native type:          M              L
+</span><span style="color:#1f1f1f;">                      RRRRRGGGGGGBBBBB
+</span><span style="color:#1f1f1f;">Memory little-endian: 0        1
+</span><span style="color:#1f1f1f;">                      M      L M      L
+</span><span style="color:#1f1f1f;">                      GGGBBBBB RRRRRGGG
+</span><span style="color:#1f1f1f;">Memory big-endian:    0        1
+</span><span style="color:#1f1f1f;">                      M      L M      L
+</span><span style="color:#1f1f1f;">                      RRRRRGGG GGGBBBBB
+</span></pre></div>
+<p>Each byte in memory holds 3 bits of the G component, but it's not easy to tell
+exactly which bits are in each byte. To fix this, the latest version of the pfg
+tool introduces component bit indices. Every component bit is now accompanied
+by its index, making the bit order crystal clear:</p>
+<div class="nowrap">
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">Format:               SDL_PIXELFORMAT_RGB565
+</span><span style="color:#1f1f1f;">Described as:         Native 16-bit type
+</span><span style="color:#1f1f1f;">Native type:          M                              L
+</span><span style="color:#1f1f1f;">                      R₄R₃R₂R₁R₀G₅G₄G₃G₂G₁G₀B₄B₃B₂B₁B₀
+</span><span style="color:#1f1f1f;">Memory little-endian: 0                1
+</span><span style="color:#1f1f1f;">                      M              L M              L
+</span><span style="color:#1f1f1f;">                      G₂G₁G₀B₄B₃B₂B₁B₀ R₄R₃R₂R₁R₀G₅G₄G₃
+</span><span style="color:#1f1f1f;">Memory big-endian:    0                1
+</span><span style="color:#1f1f1f;">                      M              L M              L
+</span><span style="color:#1f1f1f;">                      R₄R₃R₂R₁R₀G₅G₄G₃ G₂G₁G₀B₄B₃B₂B₁B₀
+</span></pre></div>
+<p>If you prefer not to see the bit indices you can use the --hide-bit-indices
+flag.</p>
+<h2 id="discovery-of-compatible-pixel-formats">Discovery of compatible pixel formats</h2>
+<p>The inspiration for the Pixel Format Guide was a series of frustrating
+experiences trying to manually match pixel formats with other, compatible pixel
+formats from different families. The latest version of the pfg tool finally
+includes support for automating such operations, in the form of the
+find-compatible command.</p>
+<p>With the find-compatible command, discovering which OpenGL formats are
+compatible with the PIXMAN_b5g6r5 format is now as easy as:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">$ python3 -m pfg find-compatible PIXMAN_b5g6r5 opengl
+</span><span style="color:#1f1f1f;">Format: PIXMAN_b5g6r5
+</span><span style="color:#1f1f1f;">Is compatible on all systems with:
+</span><span style="color:#1f1f1f;">        GL_RGB+GL_UNSIGNED_SHORT_5_6_5_REV
+</span><span style="color:#1f1f1f;">        GL_RGB_INTEGER+GL_UNSIGNED_SHORT_5_6_5_REV
+</span><span style="color:#1f1f1f;">Is compatible on little-endian systems with:
+</span><span style="color:#1f1f1f;">Is compatible on big-endian systems with
+</span></pre>
+<p>Similarly, to find out which SDL2 formats are compatible with the
+VK_FORMAT_R8G8B8A8_UNORM format, you can run:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">$ python3 -m pfg find-compatible VK_FORMAT_R8G8B8A8_UNORM sdl2
+</span><span style="color:#1f1f1f;">Format: VK_FORMAT_R8G8B8A8_UNORM
+</span><span style="color:#1f1f1f;">Is compatible on all systems with:
+</span><span style="color:#1f1f1f;">        SDL_PIXELFORMAT_RGBA32
+</span><span style="color:#1f1f1f;">Is compatible on little-endian systems with:
+</span><span style="color:#1f1f1f;">        SDL_PIXELFORMAT_ABGR8888
+</span><span style="color:#1f1f1f;">Is compatible on big-endian systems with:
+</span><span style="color:#1f1f1f;">        SDL_PIXELFORMAT_RGBA8888
+</span></pre><h2 id="listing-supported-pixel-formats-and-families">Listing supported pixel formats and families</h2>
+<p>The pfg tool now supports the list-formats and list-families commands. The
+former lists the supported pixel formats for the specified family, while the
+latter lists all the supported pixel format families. These commands can be
+very useful when writing scripts involving the pfg tool.</p>
+<p>As an example, with the list-formats command you can find which OpenGL formats
+are compatible with each Cairo format by running:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#5597d6;">$</span><span style="color:#1f1f1f;"> for f in $(</span><span style="color:#5597d6;">python3 -m</span><span style="color:#1f1f1f;"> pfg list-formats cairo)</span><span style="color:#72ab00;">; do </span><span style="color:#5597d6;">python3 -m</span><span style="color:#1f1f1f;"> pfg find-compatible $</span><span style="color:#5597d6;">f</span><span style="color:#1f1f1f;"> opengl</span><span style="color:#72ab00;">; done
+</span></pre>
+<p>I hope you enjoy the improvements!</p>
+<p>Once again, I would like to thank my employer, Collabora, for sponsoring my
+work on the Pixel Format Guide as an R&amp;D project.</p>
+
+</div>
+
+
+        </div>
+    </body>
+</html>

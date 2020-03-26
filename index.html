@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/afrantzis.css">
+      <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,400|Roboto:300,300i,400&amp;subset=greek" rel="stylesheet"> 
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+      <title>A mind forever voyaging</title>
+      <meta name="description" content="A peek into the mind of Alexandros Frantzis">
+      
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/posts">Posts</a></li>
+                <li><a href="/projects">Projects</a></li>
+                <li><a href="/about">About</a></li>
+                <li class="feed">
+                    <a href="/atom.xml">
+                        <img style="height:0.75em" src="/feed.png">
+                    </a>
+                </li>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         Interactive time series graph of confirmed COVID-19 cases per country
+    </h1>
+    <span class="post-date">
+        March  9, 2020
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;covid-19-interactive-graph&#x2F;>
+            <img style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I have been looking for more information about the trends of the number of
+confirmed COVID-19 cases per country. I could find the numbers for each day,
+but I wanted a visual representation of the information in order to readily
+compare the trends in various regions.</p>
+<p>John Hopkins University (JHU) has set up a great
+<a href="https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6">dashboard</a>
+tracking the COVID-19 cases worldwide. It contains a time series graph of the
+overall cases, but doesn't provide such graphs for each country.
+Thankfully, JHU have made all their data publicly available (for
+educational/academic purposes) in their <a href="https://github.com/CSSEGISandData/COVID-19">JHU CSSE COVID-19
+repository</a>.</p>
+<p>Since I couldn't find a visualization that matched my needs I decided
+to create my own interactive graph:</p>
+<p><a href="../../covid-19/">Interactive time series graph of confirmed COVID-19 cases per country</a></p>
+<p>The graph is implemented as a web page that uses client-side processing (i.e.,
+javascript) to plot the time series for one or more countries. The JHU
+data is fetched and processed by the client on each page load, so the graph
+will display the latest data without requiring any server-side updates.</p>
+<p>For example, this is a plot from that page for France, Italy and Spain as of
+2020-03-08:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain.png" alt="france-italy-spain" /></p>
+<p>Given the time offset between the trend lines, it's not always clear how the
+trends compare. To be able to compare trends more easily, I added an option to
+synchronize the displayed time series so that they start at (approximately) the
+same confirmed case count. Here is the same series as above but synchronized
+at 200 cases:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain-sync-200.png" alt="france-italy-spain-sync-200" /></p>
+<p>This plot indicates that France and Italy are following roughly the same trend,
+whereas Spain is faring a bit better.</p>
+<p>Before you draw any conclusions about trends that show up after
+synchronization, keep in mind two important caveats.</p>
+<p>First, since our sampling granularity is one day, and jumps in confirmed cases
+between successive days can be large, starting points for each series after
+synchronization may in fact be different enough to skew results. For example,
+we may want to synchronize at around 200, but if one series jumps from 50 to
+300, the starting point for that series is not going to be near 200.</p>
+<p>Second, using different synchronization points may provide different views of
+the trends. The same France-Italy-Spain plot synchronized at 40 cases gives:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain-sync-40.png" alt="france-italy-spain-sync-40" /></p>
+<p>In this plot we can see that France and Spain initially followed a similar
+trend, but then France started diverging upwards. This is somewhat apparent in
+the original, non-synchronized plot, but only because the France and Spain
+trend lines have a small time offset.</p>
+<p>I hope people find this interactive graph informative!</p>
+
+</div>
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         Efficient saving of multi-source buffers
+    </h1>
+    <span class="post-date">
+        December 16, 2019
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;efficient-saving-of-multi-source-buffers&#x2F;>
+            <img style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <h2 id="preface">Preface</h2>
+<p>Several years ago I was working on <a href="https://github.com/afrantzis/libbls">libbls</a>, a library implementing
+editable buffers that can efficiently hold contents originating from both
+memory and file sources. Typical clients of this libraries are programs that
+need to edit arbitrary portions of very large files, like hex editors or wave
+editors, while minimizing the required memory usage.</p>
+<p>One of the more interesting problems I encountered was devising an efficient
+way to save buffers to their corresponding files in place, while minimizing the
+extra memory (or disk space) used in the process. This post describes how this
+problem, which turns out to be NP-hard, can be modeled as a graph, and how we
+can provide a reasonable solution by using a variation of a standard graph
+algorithm.</p>
+<h2 id="introduction">Introduction</h2>
+<p>Buffers in libbls are described in terms of segments that contain data from
+either memory or file sources. In order to conserve memory (and sometimes to
+even make the editing feasible) the data from file sources is not loaded into
+main memory. Instead, the buffer keeps information about the contained files
+and ranges and reads the data in vm-page-sized chunks when needed. So, a buffer
+could look like:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">B:  |F1:0-9   |M1:10-18|F1:10-19 |M2:10-19|F2:0-6|
+</span></pre>
+<p>Where F1 and F2 are file sources, M1 and M2 are memory sources and S:B-E
+denotes a segment representing bytes from the range [B, E] of source S.</p>
+<p>In the simple case, saving a buffer to a file consists of just reading data
+from the various sources and writing them out to the target file. Things become
+more complicated when the target file happens to be one of the file sources
+used in the buffer.</p>
+<p>This post aims to illustrate the issues that can arise in such cases and
+propose an elegant way to resolve them.</p>
+<h2 id="illustrating-the-problem">Illustrating the problem</h2>
+<p>Saving the buffer to a file typically involves reading each segment in order
+and writing it out to the file. However, if the segment source is the same as
+the file that we are writing to, and depending on the ordering of segments, we
+may face a serious problem.</p>
+<p>To illustrate the problem, consider a buffer B containing segment [0-9] of file
+F at range [10-19] of the buffer, and assume that we want to write the buffer
+back to file F:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    S
+</span><span style="color:#1f1f1f;">F:  |0-9      |.........|
+
+</span><span style="color:#1f1f1f;">              S             
+</span><span style="color:#1f1f1f;">B:  |.........|F:0-9    |
+</span><span style="color:#1f1f1f;">    ^         ^         ^
+</span><span style="color:#1f1f1f;">    0         10        20
+</span></pre>
+<p>Writing the buffer segments in order leads to a situation where we first write
+out buffer range [0-9] to file F, overwriting the contents of the file at that
+range. So, when moving on to the next segment, trying to write out the range
+[10-19] of the buffer, the data we are going to read from the file (and
+therefore write) is not the original data of [F:0-9], but the data belonging to
+the previous segment of the buffer we just wrote at positions [0-9].</p>
+<p>The solution in this case is to first write out range [10-19] of the buffer to
+the file, so that the data we use is the original file data, and only then
+write out any other segments.</p>
+<p>The problem can become even more complicated when we have more segments from
+the target file. A particularly interesting case arises when a segment from the
+buffer which belongs to the target file happens to overlap with another segment
+of F which is also present in the buffer:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    S                   T
+</span><span style="color:#1f1f1f;">F:  |0-9      |.........|20-29    |.........|
+</span><span style="color:#1f1f1f;">                      
+</span><span style="color:#1f1f1f;">            T                     S 
+</span><span style="color:#1f1f1f;">B:  |.......|F:20-29  |...........|F:0-9    |
+</span><span style="color:#1f1f1f;">    ^       ^         ^           ^
+</span><span style="color:#1f1f1f;">    0       8         18          30
+</span></pre>
+<p>In this case segment S in F overlaps with segment T in B. We can simply try to
+adapt the strategy used in the previous case and first write out the two target
+file segments. This works but only if we are extra careful.  In this case, if
+we first write segment T then when we try to read the data of segment S we will
+read wrong data (file range 8-9 will contain data from segment T). If we do it
+the other way around everything works wonderfully. </p>
+<p>Taking the last example one step further, consider what happens if we have
+cyclic overlaps:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    S                   T
+</span><span style="color:#1f1f1f;">F:  |0-9      |.........|20-29    |....|
+
+</span><span style="color:#1f1f1f;">            T                S 
+</span><span style="color:#1f1f1f;">B:  |.......|F:20-29  |......|F:0-9    |
+</span><span style="color:#1f1f1f;">    ^       ^         ^      ^     ^
+</span><span style="color:#1f1f1f;">    0       8         18     25    30
+</span></pre>
+<p>Now segment S in F overlaps with segment T in B, and segment T in F overlaps
+with segment S in B. In this case there is no way to order the writes of
+segments S and T so that we end up with the correct data.</p>
+<p>A straightforward but wasteful way of tackling this problem is to save the
+whole buffer to a temporary file and then move the file to its final location.
+This works, and in some cases is preferred since it has the benefit of
+atomicity, but requires extra space for the temporary file. When buffers reach
+many GiB in size this method may prove to be unfeasible.</p>
+<p><a name="remove-overlap"></a></p>
+<p>A more efficient method is to try to eliminate the cyclic overlaps by removing
+at least one of the overlaps involved. In the previous case we can replace
+segment T in B with two segments M and T1 so that no overlap occurs. Segment M
+will contain a part of T's data but will actually store them in memory (or a
+temporary file if necessary) and the T1 segment will just be a T minus the
+range stored in M. This approach still requires some amount of extra memory,
+but in most cases this amount is much smaller than the size of the whole
+buffer. Using this scheme we have:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    S                     T1
+</span><span style="color:#1f1f1f;">F:  |0-9      |...........|22-29  |....|
+
+</span><span style="color:#1f1f1f;">            M T1              S 
+</span><span style="color:#1f1f1f;">B:  |.......|.|F:22-29|......|F:0-9    |
+</span><span style="color:#1f1f1f;">    ^       ^         ^      ^     ^
+</span><span style="color:#1f1f1f;">    0       8         18     25    30
+</span></pre>
+<p>We have managed to eliminate the first overlap and now we can safely save the
+buffer by first writing T1 then S and then the remaining segments of B.</p>
+<h2 id="modeling-the-problem">Modeling the problem</h2>
+<p>The examples presented in the previous section show representative but simple
+cases of the problems we can run into. In order to be able to handle cases of
+arbitrary complexity it is useful to create a model of the problem. We can then
+use this model to come up with algorithms that provide generic solutions.</p>
+<p>The model we are going to present uses graphs. In these <em>overlap graphs</em>
+vertices represent segments from the file we are going to save to, that are
+also present in the buffer we are going to save. Edges between vertices denote
+segment overlap: an edge from vertex P to vertex Q denotes that segment P in
+the target file overlaps with segment Q in the buffer. Every edge carries with
+it the size of the overlapping range.</p>
+<p>Here are some buffers and their respective overlap graphs (P* denotes a
+self-loop on P):</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    P              Q                   R
+F:  |0-9      |....|15-24    |.........|35-42  |
+
+                             P
+B1: |........................|F:0-9    |.......|   P
+
+              P              Q
+B2: |.........|F:0-9     |...|F:15-24  |.......|   Q --&gt; P
+
+         P                Q
+B3: |....|F:0-9    |......|F:20-29  |..........|   P* Q*
+
+    R        P                    Q
+B4: |F:35-42|F:0-9    |...........|F:20-29  |..|   R &lt;-- P* &lt;-- Q
+                                                    \___________^
+
+</span></pre><h2 id="solving-the-problem">Solving the problem</h2>
+<p>Using the overlap graph we can now answer the question: in what order should
+the vertices (segments) be written to the file so that the correct data is
+written?</p>
+<p>If the graph has no cycles then we can process the vertices in topological
+order. Topological order guarantees that each vertex is processed only when its
+dependencies have already been processed and written to file, and thus that no
+unwritten file segment in the buffer overlaps with the destination range of
+that vertex.</p>
+<p>As a special case, we can process a vertex that has a self-loop but no other
+incoming edge.  This is achieved by first writing to the file the
+non-overlapping part of the vertex and then the rest.</p>
+<p>In order to handle graphs with cycles (except self-loops) we must find a way to
+break the cycles. This can be achieved by removing the correct edges. An edge
+from P to Q can be removed by replacing Q in the buffer by the segments Q1 and
+M as described <a href="https://afrantzis.com/posts/efficient-saving-of-multi-source-buffers/#remove-overlap">previously</a>. M contains an in memory copy of
+data of the overlapping range. Q1 is the part of Q that remains. This technique
+eliminates the overlap (because the overlapping part is now stored in memory)
+and removes the edge. By choosing the edges to remove wisely, we can minimize
+the amount of extra memory we are going to need.</p>
+<p>Once we have an acyclic graph (self-loops allowed) we can process it as
+described previously.</p>
+<p>Let's manually apply this method to an example:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    P              Q                   R
+F:  |0-9      |....|15-24    |.........|35-42  |
+
+    R        P                    Q
+B4: |F:35-42|F:0-9    |...........|F:20-29  |..|   R &lt;-- P* &lt;-- Q
+                                                    \___________^
+</span></pre>
+<p>We first have to make the graph acyclic. We have a few choices for which edge
+to break:</p>
+<ul>
+<li>Q-&gt;P, a 3 byte overlap</li>
+<li>P-&gt;R, a 7 byte overlap</li>
+<li>R-&gt;Q, a 5 byte overlap</li>
+</ul>
+<p>To minimize the required extra memory we break the Q-&gt;P edge by storing the
+last three bytes of P in memory as segment M, so we get:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">    P1             Q                   R
+F:  |0-6   |.......|15-24    |.........|35-42  |
+
+    R       P1     M              Q
+B4: |F:35-42|F:0-6 |..|...........|F:20-29  |..|   Q &lt;-- R &lt;-- P1
+</span></pre>
+<p>Note that coincidentally we also resolved the self-loop of P. Now that we have
+an acyclic graph we can process the buffer segments in topological order, thus
+we first store P1 in range [8-14] of the file, next is R at [0-7] and finally Q
+at range [30-40] followed by all other portions of the buffer.</p>
+<h2 id="implementation-details">Implementation Details</h2>
+<p>libbls implements the solution described above when saving a file in place. The
+high level logic for the algorithm resides in
+<a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L610">bless_buffer_save</a>. The implementation of the algorithm
+within that function can be conceptually split into three steps. Some
+implementation details for each step are given below, along with links to the
+functions that provide the relevant functionality.</p>
+<h4 id="step-1-creating-the-overlap-graph">Step 1: Creating the overlap graph</h4>
+<p>Relevant functions:</p>
+<p><strong>buffer_file.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L134">create_overlap_graph</a><br />
+<strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L291">overlap_graph_add_segment</a></p>
+<p>To create the overlap graph we have to scan the buffer segment collection for
+segments that belong to the file we want to save to. Each new segment that is
+found must be checked against all previous found file segments for overlap.
+This is an <em>O(n + k*f(k))</em> algorithm where n is the number of segments in the
+segment collection and <em>k</em> the number of segments belonging to the file.  If we
+check for overlap naively then <em>f(k) = O(k)</em> and therefore the algorithm is
+<em>O(n + k*k)</em>. We can use an interval tree so that <em>f(k) = O(logk)</em> and the
+algorithm becomes <em>O(n + k*logk)</em>.  As we don't expect <em>k</em> to grow too large,
+the implementation currently uses the naive approach for simplicity.</p>
+<h4 id="step-2-making-the-graph-acyclic">Step 2: Making the graph acyclic</h4>
+<p>Relevant functions:</p>
+<p><strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L377">overlap_graph_remove_cycles</a></p>
+<p>In the second step the goal is to remove cycles from the graph, while trying to
+minimize the total weight of the removed edges in order to minimize extra
+memory usage. However, it turns out that the problem we are trying to solve,
+minimum feedback arc set, is NP-Hard! Don't despair though; we can get
+reasonable results with only little extra work.</p>
+<p>The undirected counterpart of the minimum feedback arc set problem is the
+minimum (or maximum) spanning tree (MST) problem, which can be efficiently
+solved by using various methods. We can use these methods to give a solution
+(but not the best) for our problem, too. We can do that because MST algorithms
+remove all undirected cycles and therefore all directed ones, too. The caveat
+is that they remove more that we need them to; undirected cycles that are not
+directed.</p>
+<p>MST algorithms work by processing edges in non-decreasing or non-increasing
+order of weight and adding them to the already formed tree (Prim) or trees
+(Kruskal) if they aren't already connected to them by an undirected path.
+Because our goal is to avoid directed cycles we can be more lax with the rules
+of adding an edge. A simple but useful observation is that if the destination
+node of an edge has no outgoing edges then a directed cycle cannot be formed,
+regardless of whether there is a pre-existing undirected path between the two
+nodes. Similarly, if the source node of an edge has no incoming edges a
+directed cycle cannot be formed either, regardless of the pre-existence of an
+undirected path between the source and destination nodes.</p>
+<p>We can use the previous observations to decrease the number of edges that are
+incorrectly deleted by the MST algorithms when acting on directed graphs.
+Although we don't completely eliminate the erroneous deletions, these rules
+give reasonable results while keeping the complexity the same as in the
+undirected case.</p>
+<p>Of the MST algorithms, Kruskal's algorithm can be used unchanged in directed
+graphs because it works directly on edges and doesn't care about their
+direction. It also works on disconnected graphs, since it finds a spanning
+forest. For these reasons, it was selected as the basis for the algorithm used
+by libbls.</p>
+<h4 id="step-3-removing-edges-and-saving-to-file">Step 3: Removing edges and saving to file</h4>
+<p>Relevant functions:</p>
+<p><strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L544">overlap_graph_get_removed_edges</a><br />
+<strong>buffer_file.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L192">break_edge</a><br />
+<strong>buffer_util.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_util.c#L412">segcol_store_in_memory</a>,
+<a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_util.c#L527">segcol_store_in_file</a><br />
+<strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L618">overlap_graph_get_vertices_topo</a></p>
+<p>In the previous step we calculated which edges would need to be removed to
+create an acyclic graph. In this step we first perform the actual removal of
+these edges by storing the associated data in memory or a temporary file as
+described <a href="https://afrantzis.com/posts/efficient-saving-of-multi-source-buffers/#remove-overlap">previously</a>.</p>
+<p>Removing the edges has the unfortunate side effect of further altering the
+graph as segments are removed, added or changed in the segment collection. This
+means that after removing the edges we must re-calculate the overlap graph for
+the segment collection.  There may be some way to avoid re-calculating the
+whole graph, making only local changes to the existing graph as vertices are
+altered but we will use the simple (although more costly) way for now.</p>
+<p>We then use this new overlap graph, which is guaranteed not to have any cycles,
+to get the vertices in topological order and save them to the target file.</p>
+
+</div>
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         mda-rs: Custom Mail Delivery Agents in Rust
+    </h1>
+    <span class="post-date">
+        October  7, 2019
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;mda-rs&#x2F;>
+            <img style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I had been stubbornly using procmail for two decades to filter my email, before
+deciding that it's finally time for a change. Procmail served me well through
+the years, but, little by little, the annoyances started adding up. The fact
+that procmail is unmaintained since 2001 inspired less and less confidence as
+years passed, and the requirement in many cases for external processing before
+any useful matching could be performed (e.g., dealing with MIME content
+transfer encoded data, or non us-ascii character sets) was a constant pain
+point. As the complexity of my rules grew, I even had to resort to an external
+program (a custom C++ program in my case) to perform some of the mailbox
+selection logic, using the AUTOFOLDER feature of procmail.</p>
+<p>At that point, and given all the functionality that I had to implement myself,
+I seriously started questioning the value procmail was providing to me and
+started looking for alternatives. I evaluated fdm and maildrop, finding in both
+a lot that I liked; first and foremost a less arcane filtering language. In the
+end, I found maildrop to be a closer match to my preferences and requirements,
+and I especially appreciated the automatic MIME content decoding.</p>
+<p>I briefly considered switching to maildrop, but a few experiments on my set of
+filtering rules indicated that maildrop's performance was significantly worse
+compared to procmail, even though for procmail I had to call out to a few more
+external programs to achieve similar functionality. I also gave fdm a go, and
+it was even slower than maildrop. I receive a lot of emails each day, mostly
+from various FOSS mailing lists, and the performance penalty adds up. While
+waiting for a few dozen seconds daily wouldn't have been the end of the world,
+the thought that my original and much older solution was faster, disturbed me.</p>
+<p>Meanwhile, I noticed that the control flow statements in maildrop's filtering
+language were similar to that of a general purpose programming language, and,
+in fact, with the integration with regular expressions, they looked a bit like
+perl. So, I thought, what if instead of using a domain specific language, I
+could use a general purpose language, augmented by some kind of library to
+implement the same filtering and delivery functionality. My thoughts then
+drifted to other things, but the seed of that idea had already been planted in
+my mind it seems, as a few years later I found myself implementing the code
+that would become mda-rs.</p>
+<p>With mda-rs I wanted to create an experience as close as possible to using an
+interpreted domain specific language, the approach follow by typical MDAs,
+while still having the performance and power of a full, compiled language at
+the fingertips. One aspect of this experience was providing an API that feels
+like natural fit for the intended purpose. The other aspect was providing a
+straightforward way to build a custom MDA. For this second aspect, the
+simplicity of Rust's cargo was one of the reasons I decided to use Rust for
+this project.</p>
+<p>Another decision catering to a similar ease-of-use goal was that the user
+shouldn't be required to use external programs to transform the data just so
+they could perform basic matching. To this end, mda-rs, like maildrop,
+normalizes the email before processing, by decoding and converting all text
+MIME content parts (including MIME encoded-words in headers) to plain UTF-8.</p>
+<p>Of course, I also wanted the resulting custom MDAs to be fast; performance was
+my main disappointment with other MDAs after all. Performance requires an
+efficient implementation, but also and an API that encourages performant use.
+An example of the effect of such a concern on the mda-rs API, is that the API
+provides access to the header fields by name, so that one can perform targeted
+per-header-field string searches, which can be much faster than regular
+expression searches of the whole header.</p>
+<p>Finally, an important requirement for all MDAs is that the email delivery is
+durable, i.e., that no email will be lost in case of a system failure. In other
+words, at any point in time at least one of the local filesystem and the email
+server should have a complete and fully accessible copy of the email.</p>
+<p>While investigating the best way to provide such durability guarantees, I
+noticed that all three MDAs mentioned previously are fsyncing the written email
+file, as expected.  However, they are not fsyncing the containing directory,
+which could potentially lead to the file not appearing on the filesystem <sup class="footnote-reference"><a href="#1">1</a></sup>.
+The exact guarantees in this scenario seem to be dependent on the filesystem,
+but, to provide maximum durability, mda-rs fsyncs both the file and the
+containing directory by default. This does incur a performance penalty, so I
+have also included an option to use the file-sync-only approach if preferred.</p>
+<p>Since mda-rs was written to cater primarily to my personal needs, it currently
+has some limitations, or unimplemented functionality, if you will. The most
+prominent one is that it delivers to maildir only, since that's the only
+mailbox format I use. The second is that there is no built-in way to change the
+email data (e.g., add a header field) except by filtering through an external
+tool, since this is another feature I don't use.</p>
+<p>Here is a small taste of how a custom MDA would look like with mda-rs:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#72ab00;">use </span><span style="color:#1f1f1f;">std::path::PathBuf;
+
+</span><span style="color:#72ab00;">use </span><span style="color:#1f1f1f;">mda::{Email, EmailRegex, </span><span style="color:#a2a001;">Result</span><span style="color:#1f1f1f;">, DeliveryDurability};
+
+</span><span style="color:#668f14;">fn </span><span style="color:#c23f31;">main</span><span style="color:#1f1f1f;">() -&gt; Result&lt;()&gt; {
+    </span><span style="color:#668f14;">let</span><span style="color:#1f1f1f;"> root </span><span style="color:#72ab00;">= </span><span style="color:#1f1f1f;">PathBuf::from(</span><span style="color:#d07711;">&quot;/tmp/my-personal-mail&quot;</span><span style="color:#1f1f1f;">);
+
+    </span><span style="color:#668f14;">let mut</span><span style="color:#1f1f1f;"> email </span><span style="color:#72ab00;">= </span><span style="color:#1f1f1f;">Email::from_stdin_filtered(</span><span style="color:#72ab00;">&amp;</span><span style="color:#1f1f1f;">[</span><span style="color:#d07711;">&quot;/usr/bin/bogofilter&quot;</span><span style="color:#1f1f1f;">, </span><span style="color:#d07711;">&quot;-ep&quot;</span><span style="color:#1f1f1f;">])</span><span style="color:#72ab00;">?</span><span style="color:#1f1f1f;">;
+    </span><span style="color:#7f8989;">// Use quicker (but possibly less durable) delivery.
+</span><span style="color:#1f1f1f;">    email.</span><span style="color:#b39f04;">set_delivery_durability</span><span style="color:#1f1f1f;">(DeliveryDurability::FileSyncOnly);
+
+    </span><span style="color:#668f14;">let</span><span style="color:#1f1f1f;"> from </span><span style="color:#72ab00;">=</span><span style="color:#1f1f1f;"> email.</span><span style="color:#b39f04;">header_field</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;From&quot;</span><span style="color:#1f1f1f;">).</span><span style="color:#b39f04;">unwrap_or</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;&quot;</span><span style="color:#1f1f1f;">);
+    </span><span style="color:#668f14;">let</span><span style="color:#1f1f1f;"> bogosity </span><span style="color:#72ab00;">=</span><span style="color:#1f1f1f;"> email.</span><span style="color:#b39f04;">header_field</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;X-Bogosity&quot;</span><span style="color:#1f1f1f;">).</span><span style="color:#b39f04;">unwrap_or</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;&quot;</span><span style="color:#1f1f1f;">);
+
+    </span><span style="color:#72ab00;">if</span><span style="color:#1f1f1f;"> bogosity.</span><span style="color:#b39f04;">contains</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;Spam, tests=bogofilter&quot;</span><span style="color:#1f1f1f;">) </span><span style="color:#72ab00;">||</span><span style="color:#1f1f1f;">
+       from.</span><span style="color:#b39f04;">contains</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;@banneddomain.com&quot;</span><span style="color:#1f1f1f;">) {
+        email.</span><span style="color:#b39f04;">deliver_to_maildir</span><span style="color:#1f1f1f;">(root.</span><span style="color:#b39f04;">join</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;spam&quot;</span><span style="color:#1f1f1f;">))</span><span style="color:#72ab00;">?</span><span style="color:#1f1f1f;">;
+        </span><span style="color:#72ab00;">return </span><span style="color:#a2a001;">Ok</span><span style="color:#1f1f1f;">(());
+    }
+
+    </span><span style="color:#668f14;">let</span><span style="color:#1f1f1f;"> cc </span><span style="color:#72ab00;">=</span><span style="color:#1f1f1f;"> email.</span><span style="color:#b39f04;">header_field</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;Cc&quot;</span><span style="color:#1f1f1f;">).</span><span style="color:#b39f04;">unwrap_or</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;&quot;</span><span style="color:#1f1f1f;">);
+    </span><span style="color:#668f14;">let</span><span style="color:#1f1f1f;"> to </span><span style="color:#72ab00;">=</span><span style="color:#1f1f1f;"> email.</span><span style="color:#b39f04;">header_field</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;To&quot;</span><span style="color:#1f1f1f;">).</span><span style="color:#b39f04;">unwrap_or</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;&quot;</span><span style="color:#1f1f1f;">);
+
+    </span><span style="color:#72ab00;">if</span><span style="color:#1f1f1f;"> to.</span><span style="color:#b39f04;">contains</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;myworkemail@example.com&quot;</span><span style="color:#1f1f1f;">) </span><span style="color:#72ab00;">||</span><span style="color:#1f1f1f;">
+       cc.</span><span style="color:#b39f04;">contains</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;myworkemail@example.com&quot;</span><span style="color:#1f1f1f;">) {
+        </span><span style="color:#72ab00;">if</span><span style="color:#1f1f1f;"> email.</span><span style="color:#b39f04;">body</span><span style="color:#1f1f1f;">().</span><span style="color:#b39f04;">search</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;URGENCY RATING: (CRITICAL|URGENT)&quot;</span><span style="color:#1f1f1f;">)</span><span style="color:#72ab00;">? </span><span style="color:#1f1f1f;">{
+            email.</span><span style="color:#b39f04;">deliver_to_maildir</span><span style="color:#1f1f1f;">(root.</span><span style="color:#b39f04;">join</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;inbox/myemail/urgent&quot;</span><span style="color:#1f1f1f;">))</span><span style="color:#72ab00;">?</span><span style="color:#1f1f1f;">;
+        } </span><span style="color:#72ab00;">else </span><span style="color:#1f1f1f;">{
+            email.</span><span style="color:#b39f04;">deliver_to_maildir</span><span style="color:#1f1f1f;">(root.</span><span style="color:#b39f04;">join</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;inbox/myemail/normal&quot;</span><span style="color:#1f1f1f;">))</span><span style="color:#72ab00;">?</span><span style="color:#1f1f1f;">;
+        }
+        </span><span style="color:#72ab00;">return </span><span style="color:#a2a001;">Ok</span><span style="color:#1f1f1f;">(());
+    }
+
+    email.</span><span style="color:#b39f04;">deliver_to_maildir</span><span style="color:#1f1f1f;">(root.</span><span style="color:#b39f04;">join</span><span style="color:#1f1f1f;">(</span><span style="color:#d07711;">&quot;inbox/unsorted&quot;</span><span style="color:#1f1f1f;">))</span><span style="color:#72ab00;">?</span><span style="color:#1f1f1f;">;
+
+    </span><span style="color:#a2a001;">Ok</span><span style="color:#1f1f1f;">(())
+}
+</span></pre>
+<p>and a corresponding minimal Cargo.toml:</p>
+<pre style="background-color:#f5f5f5;">
+<span style="color:#1f1f1f;">[</span><span style="color:#6486ab;">package</span><span style="color:#1f1f1f;">]
+</span><span style="color:#7f902a;">name </span><span style="color:#1f1f1f;">= </span><span style="color:#d07711;">&quot;my-mda&quot;
+</span><span style="color:#7f902a;">version </span><span style="color:#1f1f1f;">= </span><span style="color:#d07711;">&quot;0.1.0&quot;
+</span><span style="color:#7f902a;">edition </span><span style="color:#1f1f1f;">= </span><span style="color:#d07711;">&quot;2018&quot;
+
+</span><span style="color:#1f1f1f;">[</span><span style="color:#6486ab;">dependencies</span><span style="color:#1f1f1f;">]
+</span><span style="color:#7f902a;">mda </span><span style="color:#1f1f1f;">= </span><span style="color:#d07711;">&quot;0.1&quot;
+</span></pre>
+<p>To provide an idea of the performance gains to expect, I benchmarked a us-ascii
+only version of my personal mail filtering rules on a sample of 250 of my
+recently received emails using all the aforementioned MDAs. Of course, the
+performance results will vary depending on both the rules and the email
+themselves, but in my experience what is presented below seems to be a typical
+outcome. I'd be very interested to know how mda-rs worked for others on the
+performance front.</p>
+<p>In the benchmark I included runs both with and without filtering for spam,
+since such filtering takes up a significant amount of processing and affects
+the relative results. For mda-rs I included two versions, one that mostly uses
+per-header-field searches, and a second one that uses regular expressions
+exclusively, and thus is a bit closer to how the other MDAs work.  For each
+mda-rs version I ran the benchmark both in file sync only mode, which is how
+the others MDAs work, and full sync (file and directory) mode, which is the
+default for mda-rs. Note that, for this benchmark, both maildrop and mda-rs
+performed MIME decoding and translation to UTF-8 (internally and
+automatically), whereas neither procmail nor fdm did so, and no external
+program was used to provide such functionality. I verified that the delivery
+results were the same for all MDAs.</p>
+<p><img src="https://afrantzis.com/posts/mda-rs/mda-benchmark.svg" alt="mda-benchmark" /></p>
+<p>mda-rs wins hands down when operating in file sync mode, while at the same time
+doing more work (normalizing the email) compared to the next faster contestant,
+procmail. In full sync mode, the extra directory syncs prove to be expensive
+enough to overshadow other mda-rs performance gains, and procmail takes the
+lead. Still, even in this case, the performance is acceptable and much better
+compared to both maildrop and fdm.</p>
+<p>If you would like to learn more about how to use mda-rs, you can find detailed
+documentation at:
+<a href="https://docs.rs/mda">https://docs.rs/mda</a></p>
+<p>The mda-rs project repository is at:
+<a href="https://github.com/afrantzis/mda-rs">https://github.com/afrantzis/mda-rs</a></p>
+<p>The mda-rs crates.io entry is at:
+<a href="https://crates.io/crates/mda">https://crates.io/crates/mda</a></p>
+<p>Enjoy!</p>
+<p><sup class="footnote-reference"><a href="#1">1</a></sup> See <a href="https://lwn.net/Articles/457667/">https://lwn.net/Articles/457667/</a></p>
+
+</div>
+
+
+
+<h2><a href="/posts">More posts...</a></h2>
+
+
+        </div>
+    </body>
+</html>
