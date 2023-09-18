@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - A Pixel Format Guide (to the galaxy) – Update</title>
+<meta name="description" content="A look at the new features of the Pixel Format Guide documents and accompanying tool">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         A Pixel Format Guide (to the galaxy) – Update
+    </h1>
+    <span class="post-date">
+        October  5, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;a-pixel-format-guide-to-the-galaxy-update&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A few weeks ago I introduced the <a href="https://afrantzis.github.io/pixel-format-guide/">Pixel Format
+Guide</a> — a collection of
+documents and the accompanying
+<a href="https://github.com/afrantzis/pixel-format-guide">pfg</a> tool which aim to help
+people navigate the wilderness of pixel format definitions. In this post I will
+list the most exciting improvements that have been made since the original
+announcement.</p>
+<h2 id="new-pixel-format-families">New pixel format families</h2>
+<p>The core mission of the Pixel Format Guide is to become a comprehensive
+reference for pixel format definitions. Therefore, it's no surprise that I have
+put a lot of effort into adding more pixel format families. At the time the
+previous post was written, the Pixel Format Guide supported 3 formats: Vulkan,
+OpenGL and Wayland-DRM. Since then, I have added the Cairo, DirectFB, Pixman,
+SDL2 and V4L2 pixel format families, bringing the total number of supported
+families to 8 and the total number of supported pixel format definitions to
+459!</p>
+<h2 id="bit-indices">Bit indices</h2>
+<p>While working with packed pixel formats, I noticed that the ordering of the
+component bits is sometimes difficult to figure out. This happens especially
+when the bits of a component are split between multiple bytes, like, for
+example, in an RGB565 16-bit format:</p>
+<div class="nowrap">
+<pre class="z-code"><code><span class="z-text z-plain">Format:               SDL_PIXELFORMAT_RGB565
+Described as:         Native 16-bit type
+Native type:          M              L
+                      RRRRRGGGGGGBBBBB
+Memory little-endian: 0        1
+                      M      L M      L
+                      GGGBBBBB RRRRRGGG
+Memory big-endian:    0        1
+                      M      L M      L
+                      RRRRRGGG GGGBBBBB
+</span></code></pre>
+</div>
+<p>Each byte in memory holds 3 bits of the G component, but it's not easy to tell
+exactly which bits are in each byte. To fix this, the latest version of the pfg
+tool introduces component bit indices. Every component bit is now accompanied
+by its index, making the bit order crystal clear:</p>
+<div class="nowrap">
+<pre class="z-code"><code><span class="z-text z-plain">Format:               SDL_PIXELFORMAT_RGB565
+Described as:         Native 16-bit type
+Native type:          M                              L
+                      R₄R₃R₂R₁R₀G₅G₄G₃G₂G₁G₀B₄B₃B₂B₁B₀
+Memory little-endian: 0                1
+                      M              L M              L
+                      G₂G₁G₀B₄B₃B₂B₁B₀ R₄R₃R₂R₁R₀G₅G₄G₃
+Memory big-endian:    0                1
+                      M              L M              L
+                      R₄R₃R₂R₁R₀G₅G₄G₃ G₂G₁G₀B₄B₃B₂B₁B₀
+</span></code></pre>
+</div>
+<p>If you prefer not to see the bit indices you can use the --hide-bit-indices
+flag.</p>
+<h2 id="discovery-of-compatible-pixel-formats">Discovery of compatible pixel formats</h2>
+<p>The inspiration for the Pixel Format Guide was a series of frustrating
+experiences trying to manually match pixel formats with other, compatible pixel
+formats from different families. The latest version of the pfg tool finally
+includes support for automating such operations, in the form of the
+find-compatible command.</p>
+<p>With the find-compatible command, discovering which OpenGL formats are
+compatible with the PIXMAN_b5g6r5 format is now as easy as:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ python3 -m pfg find-compatible PIXMAN_b5g6r5 opengl
+Format: PIXMAN_b5g6r5
+Is compatible on all systems with:
+        GL_RGB+GL_UNSIGNED_SHORT_5_6_5_REV
+        GL_RGB_INTEGER+GL_UNSIGNED_SHORT_5_6_5_REV
+Is compatible on little-endian systems with:
+Is compatible on big-endian systems with
+</span></code></pre>
+<p>Similarly, to find out which SDL2 formats are compatible with the
+VK_FORMAT_R8G8B8A8_UNORM format, you can run:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ python3 -m pfg find-compatible VK_FORMAT_R8G8B8A8_UNORM sdl2
+Format: VK_FORMAT_R8G8B8A8_UNORM
+Is compatible on all systems with:
+        SDL_PIXELFORMAT_RGBA32
+Is compatible on little-endian systems with:
+        SDL_PIXELFORMAT_ABGR8888
+Is compatible on big-endian systems with:
+        SDL_PIXELFORMAT_RGBA8888
+</span></code></pre>
+<h2 id="listing-supported-pixel-formats-and-families">Listing supported pixel formats and families</h2>
+<p>The pfg tool now supports the list-formats and list-families commands. The
+former lists the supported pixel formats for the specified family, while the
+latter lists all the supported pixel format families. These commands can be
+very useful when writing scripts involving the pfg tool.</p>
+<p>As an example, with the list-formats command you can find which OpenGL formats
+are compatible with each Cairo format by running:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> for f in <span class="z-meta z-group z-expansion z-command z-parens z-shell"><span class="z-punctuation z-definition z-variable z-shell">$</span><span class="z-punctuation z-section z-parens z-begin z-shell">(</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">python3</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>m</span> pfg list-formats cairo</span><span class="z-punctuation z-section z-parens z-end z-shell">)</span></span></span><span class="z-keyword z-operator z-logical z-continue z-shell">;</span> <span class="z-keyword z-control z-loop z-do z-shell">do</span> <span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">python3</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>m</span> pfg find-compatible <span class="z-meta z-group z-expansion z-parameter z-shell"><span class="z-punctuation z-definition z-variable z-shell">$</span><span class="z-variable z-other z-readwrite z-shell">f</span></span> opengl</span><span class="z-keyword z-operator z-logical z-continue z-shell">;</span> <span class="z-keyword z-control z-loop z-end z-shell">done</span>
+</span></code></pre>
+<p>I hope you enjoy the improvements!</p>
+<p>Once again, I would like to thank my employer, Collabora, for sponsoring my
+work on the Pixel Format Guide as an R&amp;D project.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

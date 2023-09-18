@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - mda-rs: Custom Mail Delivery Agents in Rust</title>
+<meta name="description" content="A Rust library for creating custom Mail Delivery Agents">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         mda-rs: Custom Mail Delivery Agents in Rust
+    </h1>
+    <span class="post-date">
+        October  7, 2019
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;mda-rs&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I had been stubbornly using procmail for two decades to filter my email, before
+deciding that it's finally time for a change. Procmail served me well through
+the years, but, little by little, the annoyances started adding up. The fact
+that procmail is unmaintained since 2001 inspired less and less confidence as
+years passed, and the requirement in many cases for external processing before
+any useful matching could be performed (e.g., dealing with MIME content
+transfer encoded data, or non us-ascii character sets) was a constant pain
+point. As the complexity of my rules grew, I even had to resort to an external
+program (a custom C++ program in my case) to perform some of the mailbox
+selection logic, using the AUTOFOLDER feature of procmail.</p>
+<p>At that point, and given all the functionality that I had to implement myself,
+I seriously started questioning the value procmail was providing to me and
+started looking for alternatives. I evaluated fdm and maildrop, finding in both
+a lot that I liked; first and foremost a less arcane filtering language. In the
+end, I found maildrop to be a closer match to my preferences and requirements,
+and I especially appreciated the automatic MIME content decoding.</p>
+<p>I briefly considered switching to maildrop, but a few experiments on my set of
+filtering rules indicated that maildrop's performance was significantly worse
+compared to procmail, even though for procmail I had to call out to a few more
+external programs to achieve similar functionality. I also gave fdm a go, and
+it was even slower than maildrop. I receive a lot of emails each day, mostly
+from various FOSS mailing lists, and the performance penalty adds up. While
+waiting for a few dozen seconds daily wouldn't have been the end of the world,
+the thought that my original and much older solution was faster, disturbed me.</p>
+<p>Meanwhile, I noticed that the control flow statements in maildrop's filtering
+language were similar to that of a general purpose programming language, and,
+in fact, with the integration with regular expressions, they looked a bit like
+perl. So, I thought, what if instead of using a domain specific language, I
+could use a general purpose language, augmented by some kind of library to
+implement the same filtering and delivery functionality. My thoughts then
+drifted to other things, but the seed of that idea had already been planted in
+my mind it seems, as a few years later I found myself implementing the code
+that would become mda-rs.</p>
+<p>With mda-rs I wanted to create an experience as close as possible to using an
+interpreted domain specific language, the approach follow by typical MDAs,
+while still having the performance and power of a full, compiled language at
+the fingertips. One aspect of this experience was providing an API that feels
+like natural fit for the intended purpose. The other aspect was providing a
+straightforward way to build a custom MDA. For this second aspect, the
+simplicity of Rust's cargo was one of the reasons I decided to use Rust for
+this project.</p>
+<p>Another decision catering to a similar ease-of-use goal was that the user
+shouldn't be required to use external programs to transform the data just so
+they could perform basic matching. To this end, mda-rs, like maildrop,
+normalizes the email before processing, by decoding and converting all text
+MIME content parts (including MIME encoded-words in headers) to plain UTF-8.</p>
+<p>Of course, I also wanted the resulting custom MDAs to be fast; performance was
+my main disappointment with other MDAs after all. Performance requires an
+efficient implementation, but also and an API that encourages performant use.
+An example of the effect of such a concern on the mda-rs API, is that the API
+provides access to the header fields by name, so that one can perform targeted
+per-header-field string searches, which can be much faster than regular
+expression searches of the whole header.</p>
+<p>Finally, an important requirement for all MDAs is that the email delivery is
+durable, i.e., that no email will be lost in case of a system failure. In other
+words, at any point in time at least one of the local filesystem and the email
+server should have a complete and fully accessible copy of the email.</p>
+<p>While investigating the best way to provide such durability guarantees, I
+noticed that all three MDAs mentioned previously are fsyncing the written email
+file, as expected.  However, they are not fsyncing the containing directory,
+which could potentially lead to the file not appearing on the filesystem <sup class="footnote-reference"><a href="#1">1</a></sup>.
+The exact guarantees in this scenario seem to be dependent on the filesystem,
+but, to provide maximum durability, mda-rs fsyncs both the file and the
+containing directory by default. This does incur a performance penalty, so I
+have also included an option to use the file-sync-only approach if preferred.</p>
+<p>Since mda-rs was written to cater primarily to my personal needs, it currently
+has some limitations, or unimplemented functionality, if you will. The most
+prominent one is that it delivers to maildir only, since that's the only
+mailbox format I use. The second is that there is no built-in way to change the
+email data (e.g., add a header field) except by filtering through an external
+tool, since this is another feature I don't use.</p>
+<p>Here is a small taste of how a custom MDA would look like with mda-rs:</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-keyword z-other z-rust">use</span> <span class="z-meta z-path z-rust">std<span class="z-punctuation z-accessor z-rust">::</span></span><span class="z-meta z-path z-rust">path<span class="z-punctuation z-accessor z-rust">::</span></span>PathBuf<span class="z-punctuation z-terminator z-rust">;</span>
+
+<span class="z-keyword z-other z-rust">use</span> <span class="z-meta z-path z-rust">mda<span class="z-punctuation z-accessor z-rust">::</span></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>Email<span class="z-punctuation z-separator z-rust">,</span> EmailRegex<span class="z-punctuation z-separator z-rust">,</span> <span class="z-support z-type z-rust">Result</span><span class="z-punctuation z-separator z-rust">,</span> DeliveryDurability</span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+
+<span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">main</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Result</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-punctuation z-section z-group z-end z-rust">)</span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span></span> </span><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+    <span class="z-storage z-type z-rust">let</span> root <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-meta z-path z-rust">PathBuf<span class="z-punctuation z-accessor z-rust">::</span></span>from<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>/tmp/my-personal-mail<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+
+    <span class="z-storage z-type z-rust">let</span> <span class="z-storage z-modifier z-rust">mut</span> email <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-meta z-path z-rust">Email<span class="z-punctuation z-accessor z-rust">::</span></span>from_stdin_filtered<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-operator z-bitwise z-rust">&amp;</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>/usr/bin/bogofilter<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span><span class="z-punctuation z-separator z-rust">,</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>-ep<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span><span class="z-punctuation z-terminator z-rust">;</span>
+    <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Use quicker (but possibly less durable) delivery.
+</span>    email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">set_delivery_durability</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-meta z-path z-rust">DeliveryDurability<span class="z-punctuation z-accessor z-rust">::</span></span>FileSyncOnly</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+
+    <span class="z-storage z-type z-rust">let</span> from <span class="z-keyword z-operator z-assignment z-rust">=</span> email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">header_field</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>From<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap_or</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span><span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+    <span class="z-storage z-type z-rust">let</span> bogosity <span class="z-keyword z-operator z-assignment z-rust">=</span> email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">header_field</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>X-Bogosity<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap_or</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span><span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+
+    <span class="z-keyword z-control z-rust">if</span> bogosity<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">contains</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>Spam, tests=bogofilter<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-keyword z-operator z-logical z-rust">||</span>
+       from<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">contains</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>@banneddomain.com<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+        email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">deliver_to_maildir</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>root<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">join</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>spam<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span><span class="z-punctuation z-terminator z-rust">;</span>
+        <span class="z-keyword z-control z-rust">return</span> <span class="z-support z-type z-rust">Ok</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+    </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span>
+
+    <span class="z-storage z-type z-rust">let</span> cc <span class="z-keyword z-operator z-assignment z-rust">=</span> email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">header_field</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>Cc<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap_or</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span><span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+    <span class="z-storage z-type z-rust">let</span> to <span class="z-keyword z-operator z-assignment z-rust">=</span> email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">header_field</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>To<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap_or</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span><span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+
+    <span class="z-keyword z-control z-rust">if</span> to<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">contains</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>myworkemail@example.com<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-keyword z-operator z-logical z-rust">||</span>
+       cc<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">contains</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>myworkemail@example.com<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+        <span class="z-keyword z-control z-rust">if</span> email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">body</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">search</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>URGENCY RATING: (CRITICAL|URGENT)<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+            email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">deliver_to_maildir</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>root<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">join</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>inbox/myemail/urgent<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span><span class="z-punctuation z-terminator z-rust">;</span>
+        </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span> <span class="z-keyword z-control z-rust">else</span> <span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+            email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">deliver_to_maildir</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>root<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">join</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>inbox/myemail/normal<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span><span class="z-punctuation z-terminator z-rust">;</span>
+        </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span>
+        <span class="z-keyword z-control z-rust">return</span> <span class="z-support z-type z-rust">Ok</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+    </span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span>
+
+    email<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">deliver_to_maildir</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span>root<span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">join</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>inbox/unsorted<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-keyword z-operator z-rust">?</span><span class="z-punctuation z-terminator z-rust">;</span>
+
+    <span class="z-support z-type z-rust">Ok</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span>
+</span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>and a corresponding minimal Cargo.toml:</p>
+<pre data-lang="toml" class="language-toml z-code"><code class="language-toml" data-lang="toml"><span class="z-source z-toml"><span class="z-punctuation z-definition z-table z-begin z-toml">[</span><span class="z-meta z-tag z-table z-toml"><span class="z-entity z-name z-table z-toml">package</span></span><span class="z-punctuation z-definition z-table z-end z-toml">]</span>
+<span class="z-meta z-tag z-key z-toml"><span class="z-entity z-name z-tag z-toml">name</span></span> <span class="z-punctuation z-definition z-key-value z-toml">=</span> <span class="z-string z-quoted z-double z-basic z-toml"><span class="z-punctuation z-definition z-string z-begin z-toml">&quot;</span>my-mda<span class="z-punctuation z-definition z-string z-end z-toml">&quot;</span></span>
+<span class="z-meta z-tag z-key z-toml"><span class="z-entity z-name z-tag z-toml">version</span></span> <span class="z-punctuation z-definition z-key-value z-toml">=</span> <span class="z-string z-quoted z-double z-basic z-toml"><span class="z-punctuation z-definition z-string z-begin z-toml">&quot;</span>0.1.0<span class="z-punctuation z-definition z-string z-end z-toml">&quot;</span></span>
+<span class="z-meta z-tag z-key z-toml"><span class="z-entity z-name z-tag z-toml">edition</span></span> <span class="z-punctuation z-definition z-key-value z-toml">=</span> <span class="z-string z-quoted z-double z-basic z-toml"><span class="z-punctuation z-definition z-string z-begin z-toml">&quot;</span>2018<span class="z-punctuation z-definition z-string z-end z-toml">&quot;</span></span>
+
+<span class="z-punctuation z-definition z-table z-begin z-toml">[</span><span class="z-meta z-tag z-table z-toml"><span class="z-entity z-name z-table z-toml">dependencies</span></span><span class="z-punctuation z-definition z-table z-end z-toml">]</span>
+<span class="z-meta z-tag z-key z-toml"><span class="z-entity z-name z-tag z-toml">mda</span></span> <span class="z-punctuation z-definition z-key-value z-toml">=</span> <span class="z-string z-quoted z-double z-basic z-toml"><span class="z-punctuation z-definition z-string z-begin z-toml">&quot;</span>0.1<span class="z-punctuation z-definition z-string z-end z-toml">&quot;</span></span>
+</span></code></pre>
+<p>To provide an idea of the performance gains to expect, I benchmarked a us-ascii
+only version of my personal mail filtering rules on a sample of 250 of my
+recently received emails using all the aforementioned MDAs. Of course, the
+performance results will vary depending on both the rules and the email
+themselves, but in my experience what is presented below seems to be a typical
+outcome. I'd be very interested to know how mda-rs worked for others on the
+performance front.</p>
+<p>In the benchmark I included runs both with and without filtering for spam,
+since such filtering takes up a significant amount of processing and affects
+the relative results. For mda-rs I included two versions, one that mostly uses
+per-header-field searches, and a second one that uses regular expressions
+exclusively, and thus is a bit closer to how the other MDAs work.  For each
+mda-rs version I ran the benchmark both in file sync only mode, which is how
+the others MDAs work, and full sync (file and directory) mode, which is the
+default for mda-rs. Note that, for this benchmark, both maildrop and mda-rs
+performed MIME decoding and translation to UTF-8 (internally and
+automatically), whereas neither procmail nor fdm did so, and no external
+program was used to provide such functionality. I verified that the delivery
+results were the same for all MDAs.</p>
+<p><img src="https://afrantzis.com/posts/mda-rs/mda-benchmark.svg" alt="mda-benchmark" /></p>
+<p>mda-rs wins hands down when operating in file sync mode, while at the same time
+doing more work (normalizing the email) compared to the next faster contestant,
+procmail. In full sync mode, the extra directory syncs prove to be expensive
+enough to overshadow other mda-rs performance gains, and procmail takes the
+lead. Still, even in this case, the performance is acceptable and much better
+compared to both maildrop and fdm.</p>
+<p>If you would like to learn more about how to use mda-rs, you can find detailed
+documentation at:
+<a href="https://docs.rs/mda">https://docs.rs/mda</a></p>
+<p>The mda-rs project repository is at:
+<a href="https://github.com/afrantzis/mda-rs">https://github.com/afrantzis/mda-rs</a></p>
+<p>The mda-rs crates.io entry is at:
+<a href="https://crates.io/crates/mda">https://crates.io/crates/mda</a></p>
+<p>Enjoy!</p>
+<p><sup class="footnote-reference"><a href="#1">1</a></sup> See <a href="https://lwn.net/Articles/457667/">https://lwn.net/Articles/457667/</a></p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

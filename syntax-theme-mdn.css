@@ -1,0 +1,33 @@
+.z-code {
+    color: var(--body-color);
+}
+
+.z-comment {
+    color: var(--code-token-comment);
+}
+
+.z-string, .z-constant, .z-support.z-constant, .z-variable.z-other.z-constant,
+.z-punctuation.z-definition.z-string, .z-entity.z-name.z-tag {
+    color: var(--code-token-attribute-value);
+}
+
+.z-keyword {
+    color: var(--code-token-keyword);
+}
+
+.z-keyword.z-operator {
+    color: var(--body-color);
+}
+
+.z-storage {
+    color: var(--code-token-keyword);
+}
+
+.z-support.z-function, .z-variable.z-function, .z-entity.z-name,
+.z-entity.z-other.z-attribute-name {
+    color: var(--code-token-attribute-name);
+}
+
+.z-punctuation {
+    color: var(--code-token-punctuation);
+}

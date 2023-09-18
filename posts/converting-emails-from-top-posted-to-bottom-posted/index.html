@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Converting emails from top-posted to bottom-posted</title>
+<meta name="description" content="A description of the algorithm used by the top2bottom tool to convert top-posted emails to bottom-posted.">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Converting emails from top-posted to bottom-posted
+    </h1>
+    <span class="post-date">
+        October 29, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;converting-emails-from-top-posted-to-bottom-posted&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I have been an adherent of
+<a href="https://en.wikipedia.org/wiki/Posting_style">bottom-posting</a>, or, to be more
+precise, of interleaved-posting for as long as I can remember. I don't recall
+why I selected this posting style when first I started sending emails — I guess
+it just felt more intuitive and natural.</p>
+<p>These days I find top-posted messages so annoying to deal with, that I manually
+convert them to bottom-posted before replying. Unfortunately, many modern email
+clients and web interfaces promote a top-posting style, so I end up performing
+such conversions more often than I would like. A few weeks ago I received an 8
+level deep top-posted email and decided that it is time for me to welcome our
+automated email conversion overlords. The result is the
+<a href="https://github.com/afrantzis/top2bottom">top2bottom</a> command-line tool.</p>
+<p>There are many forms of top-posting, but the one I have to deal with the most,
+and therefore the one that the top2bottom tool handles, looks like:</p>
+<pre class="z-code"><code><span class="z-text z-plain">2017-10-28 B wrote:
+&gt; bbbbb
+&gt;
+&gt; bbbbb
+&gt;
+&gt; 2017-10-28 A wrote:
+&gt;
+&gt;&gt; aaaaaa
+&gt;&gt; aaaaaa
+&gt;&gt;
+&gt;
+</span></code></pre>
+<p>The number of quote-prefix markers (&gt;) in the beginning of each line indicates
+the <strong>quote-depth</strong> of that line.</p>
+<p>This form consists of two kinds of line blocks:</p>
+<ul>
+<li><strong>attribution blocks</strong>, denoted by <strong>aD</strong>, where D is the quote-depth of the block</li>
+<li><strong>body blocks</strong>, denoted by <strong>bD</strong>, where D is the quote-depth of the block</li>
+</ul>
+<p>In a top-posted message the blocks are interleaved:</p>
+<p>b0, a0, b1, a1, b2, a2, ...</p>
+<p>To convert such a message to bottom-posted we need to move all attribution
+blocks to the top in quote-depth order, followed by all body blocks in reverse
+quote-depth order:</p>
+<p>a0, a1, a2, ..., b2, b1, b0</p>
+<p>The block reordering operation can be easily implemented by sorting with an
+appropriate comparison function. The more interesting and non-trivial part is
+figuring out which lines belong to which block. To do this, we first need to
+define some terms:</p>
+<ul>
+<li>
+<p>An <strong>empty line</strong> is a line that has no message content, although it may
+have one or more quote-prefix markers (&gt;), i.e., a non-zero quote-depth.</p>
+</li>
+<li>
+<p>A <strong>paragraph</strong> is a sequence of non-empty, consecutive lines of the same
+quote-depth.</p>
+</li>
+</ul>
+<p>Now we can provide precise definitions for attribution and body blocks:</p>
+<ul>
+<li>
+<p>An attribution block of quote-depth D is the sequence of all consecutive
+lines of quote-depth D which start from the beginning of the last
+paragraph before a quote-depth increase from D to D+1, and end at the
+last line before the quote-depth increase.</p>
+</li>
+<li>
+<p>A body block of quote-depth D is the sequence of all lines (not
+necessarily consecutive) of quote-depth D that do not belong to an
+attribution block.</p>
+</li>
+</ul>
+<p>Based on these definitions, I experimented with a number of  classification
+algorithms. For my first attempt I used a chain of functional operations to
+process the message, but I found it unintuitive to express the intricacies of
+block detection in this manner. My next attempt was based on a finite state
+machine and performed a single pass of the message from bottom to top. The
+finite state machine approach worked, but it was more complex and difficult to
+reason about than I would like. Finally, I developed an algorithm that I found
+to be both simpler and more obviously correct than the alternatives.</p>
+<p>The algorithm works by processing lines from top to bottom, marking them as
+body lines of their respective quote-depth. When a quote-depth increase is
+detected, and before processing the line with the increased quote-depth, the
+algorithm backtracks until it reaches the beginning of a paragraph, marking all
+lines it visits as attribution lines. It then continues processing from the
+point it stopped before backtracking.</p>
+<p>The empty line (if any) just before an attribution block needs special care. It
+is an artifact of top-posting and serves to separate the preceding message body
+from the attribution lines. In top2bottom I opted to repurpose this line as an
+extra space after a quote-depth change in the bottom-posted output. This works
+well because top-posted replies usually don't start with an empty line, so
+adding this line makes the bottom-posted version look better. In algorithmic
+terms, this line is marked as belonging to a special <strong>before-body block</strong> (denoted
+by <strong>bD-</strong>), which is placed just before the <strong>bD</strong> block in the final output.</p>
+<p>Here is the algorithm in action:</p>
+<p><img src="https://afrantzis.com/posts/converting-emails-from-top-posted-to-bottom-posted/top2bottom-algorithm.gif" alt="top2bottom-algorithm" /></p>
+<p>The algorithm works well if the input is top-posted, but what happens if the
+input has some other form? It turns out that the algorithm works well for two
+additional classes of messages that are not strictly top-posted and are often
+encountered in the wild. The first class consists of messages that end with a
+cascade of empty lines of decreasing quote-depth, which is a result of
+(inadvertently) adding empty lines to the end of a message when replying. The
+example used above to show the algorithm in action actually belongs to this
+class. The second class comprises messages that started as (strictly)
+bottom-posted, but for which the replies changed to top-posted at some point.</p>
+<p>There is, however, a third class of messages that is also frequently seen, but
+the  algorithm I described so far cannot handle without some enhancements. This
+class is composed of messages that started as interleaved-posted and then
+turned to top-posted. To handle this class we need a way to detect the section
+of the message that is interleaved-posted and ensure that we don't reorder its
+parts, but rather treat it as an indivisible whole.</p>
+<p>Fortunately, there is an easy way to decide which lines of the message belong
+to the interleaved section. The quote-depth curve of interleaved messages has a
+characteristic pattern of multiple peaks (lines with the highest quote-depth
+locally) and valleys (lines with lower quote-depths between successive peaks).
+In a deeply interleaved message the base quote-depth of the interleaved section
+is the quote-depth of the lowest valley. All lines with quote-depth equal to or
+higher than the base quote-depth belong to the interleaved section of the
+message. In the following example, the lowest (and only) valley has a
+quote-depth of 2, so we treat the marked part of the message, which consists of
+all lines with quote-depth 2 or more, as indivisible:</p>
+<div class="nowrap">
+<pre class="z-code"><code><span class="z-text z-plain">2017-10-28 C wrote:      0
+&gt; ccccc                    1
+&gt;                          1
+&gt; 2017-10-28 B wrote:      1      ___
+&gt;&gt; 2017-10-28 A wrote:       2     |
+&gt;&gt;&gt; aaaaa                      3   |
+&gt;&gt;&gt; aaaaa                      3   |
+&gt;&gt;                           2     |
+&gt;&gt; bbbbb                     2 ----|
+&gt;&gt;                           2     |
+&gt;&gt;&gt; aaaaa                      3   |
+&gt;&gt;                           2     |
+&gt;&gt; bbbbb                     2    _|_
+&gt;                          1
+</span></code></pre>
+</div>
+<p>The latest version of top2bottom implements the aforementioned enhancement,
+and, with it, can handle almost all of the top-posted messages of this form
+that I have encountered. The few messages which top2bottom refuses to convert
+are either badly formatted or use a different form of top-posting.</p>
+<p>I have been using top2bottom for a few weeks now and I am very pleased with it.
+I am using Vim for composing and replying to emails, so my preferred way to
+convert emails is by using the Vim filter command: :%!top2bottom. I hope you
+find top2bottom useful!</p>
+<p>A closing note: while doing some research for this post I came across another,
+much older program that also performs top to bottom email conversion, and
+which, unsurprisingly, is also named top2bottom. The code for it was posted in
+an old Red Hat list
+<a href="https://www.redhat.com/archives/rhl-list/2006-October/msg01391.html">post</a>. I
+have tried it on a few sample top-posted emails, but it doesn't seem to work
+well, at least not for the kinds of emails that I get. YMMV.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

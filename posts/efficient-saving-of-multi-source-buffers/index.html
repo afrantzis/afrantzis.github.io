@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Efficient saving of multi-source buffers</title>
+<meta name="description" content="Exploring the intricacies of saving buffers holding data from
+                 multiple sources">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Efficient saving of multi-source buffers
+    </h1>
+    <span class="post-date">
+        December 16, 2019
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;efficient-saving-of-multi-source-buffers&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <h2 id="preface">Preface</h2>
+<p>Several years ago I was working on <a href="https://github.com/afrantzis/libbls">libbls</a>, a library implementing
+editable buffers that can efficiently hold contents originating from both
+memory and file sources. Typical clients of this libraries are programs that
+need to edit arbitrary portions of very large files, like hex editors or wave
+editors, while minimizing the required memory usage.</p>
+<p>One of the more interesting problems I encountered was devising an efficient
+way to save buffers to their corresponding files in place, while minimizing the
+extra memory (or disk space) used in the process. This post describes how this
+problem, which turns out to be NP-hard, can be modeled as a graph, and how we
+can provide a reasonable solution by using a variation of a standard graph
+algorithm.</p>
+<h2 id="introduction">Introduction</h2>
+<p>Buffers in libbls are described in terms of segments that contain data from
+either memory or file sources. In order to conserve memory (and sometimes to
+even make the editing feasible) the data from file sources is not loaded into
+main memory. Instead, the buffer keeps information about the contained files
+and ranges and reads the data in vm-page-sized chunks when needed. So, a buffer
+could look like:</p>
+<pre class="z-code"><code><span class="z-text z-plain">B:  |F1:0-9   |M1:10-18|F1:10-19 |M2:10-19|F2:0-6|
+</span></code></pre>
+<p>Where F1 and F2 are file sources, M1 and M2 are memory sources and S:B-E
+denotes a segment representing bytes from the range [B, E] of source S.</p>
+<p>In the simple case, saving a buffer to a file consists of just reading data
+from the various sources and writing them out to the target file. Things become
+more complicated when the target file happens to be one of the file sources
+used in the buffer.</p>
+<p>This post aims to illustrate the issues that can arise in such cases and
+propose an elegant way to resolve them.</p>
+<h2 id="illustrating-the-problem">Illustrating the problem</h2>
+<p>Saving the buffer to a file typically involves reading each segment in order
+and writing it out to the file. However, if the segment source is the same as
+the file that we are writing to, and depending on the ordering of segments, we
+may face a serious problem.</p>
+<p>To illustrate the problem, consider a buffer B containing segment [0-9] of file
+F at range [10-19] of the buffer, and assume that we want to write the buffer
+back to file F:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    S
+F:  |0-9      |.........|
+
+              S             
+B:  |.........|F:0-9    |
+    ^         ^         ^
+    0         10        20
+</span></code></pre>
+<p>Writing the buffer segments in order leads to a situation where we first write
+out buffer range [0-9] to file F, overwriting the contents of the file at that
+range. So, when moving on to the next segment, trying to write out the range
+[10-19] of the buffer, the data we are going to read from the file (and
+therefore write) is not the original data of [F:0-9], but the data belonging to
+the previous segment of the buffer we just wrote at positions [0-9].</p>
+<p>The solution in this case is to first write out range [10-19] of the buffer to
+the file, so that the data we use is the original file data, and only then
+write out any other segments.</p>
+<p>The problem can become even more complicated when we have more segments from
+the target file. A particularly interesting case arises when a segment from the
+buffer which belongs to the target file happens to overlap with another segment
+of F which is also present in the buffer:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    S                   T
+F:  |0-9      |.........|20-29    |.........|
+                      
+            T                     S 
+B:  |.......|F:20-29  |...........|F:0-9    |
+    ^       ^         ^           ^
+    0       8         18          30
+</span></code></pre>
+<p>In this case segment S in F overlaps with segment T in B. We can simply try to
+adapt the strategy used in the previous case and first write out the two target
+file segments. This works but only if we are extra careful.  In this case, if
+we first write segment T then when we try to read the data of segment S we will
+read wrong data (file range 8-9 will contain data from segment T). If we do it
+the other way around everything works wonderfully. </p>
+<p>Taking the last example one step further, consider what happens if we have
+cyclic overlaps:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    S                   T
+F:  |0-9      |.........|20-29    |....|
+
+            T                S 
+B:  |.......|F:20-29  |......|F:0-9    |
+    ^       ^         ^      ^     ^
+    0       8         18     25    30
+</span></code></pre>
+<p>Now segment S in F overlaps with segment T in B, and segment T in F overlaps
+with segment S in B. In this case there is no way to order the writes of
+segments S and T so that we end up with the correct data.</p>
+<p>A straightforward but wasteful way of tackling this problem is to save the
+whole buffer to a temporary file and then move the file to its final location.
+This works, and in some cases is preferred since it has the benefit of
+atomicity, but requires extra space for the temporary file. When buffers reach
+many GiB in size this method may prove to be unfeasible.</p>
+<p><a name="remove-overlap"></a></p>
+<p>A more efficient method is to try to eliminate the cyclic overlaps by removing
+at least one of the overlaps involved. In the previous case we can replace
+segment T in B with two segments M and T1 so that no overlap occurs. Segment M
+will contain a part of T's data but will actually store them in memory (or a
+temporary file if necessary) and the T1 segment will just be a T minus the
+range stored in M. This approach still requires some amount of extra memory,
+but in most cases this amount is much smaller than the size of the whole
+buffer. Using this scheme we have:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    S                     T1
+F:  |0-9      |...........|22-29  |....|
+
+            M T1              S 
+B:  |.......|.|F:22-29|......|F:0-9    |
+    ^       ^         ^      ^     ^
+    0       8         18     25    30
+</span></code></pre>
+<p>We have managed to eliminate the first overlap and now we can safely save the
+buffer by first writing T1 then S and then the remaining segments of B.</p>
+<h2 id="modeling-the-problem">Modeling the problem</h2>
+<p>The examples presented in the previous section show representative but simple
+cases of the problems we can run into. In order to be able to handle cases of
+arbitrary complexity it is useful to create a model of the problem. We can then
+use this model to come up with algorithms that provide generic solutions.</p>
+<p>The model we are going to present uses graphs. In these <em>overlap graphs</em>
+vertices represent segments from the file we are going to save to, that are
+also present in the buffer we are going to save. Edges between vertices denote
+segment overlap: an edge from vertex P to vertex Q denotes that segment P in
+the target file overlaps with segment Q in the buffer. Every edge carries with
+it the size of the overlapping range.</p>
+<p>Here are some buffers and their respective overlap graphs (P* denotes a
+self-loop on P):</p>
+<pre class="z-code"><code><span class="z-text z-plain">    P              Q                   R
+F:  |0-9      |....|15-24    |.........|35-42  |
+
+                             P
+B1: |........................|F:0-9    |.......|   P
+
+              P              Q
+B2: |.........|F:0-9     |...|F:15-24  |.......|   Q --&gt; P
+
+         P                Q
+B3: |....|F:0-9    |......|F:20-29  |..........|   P* Q*
+
+    R        P                    Q
+B4: |F:35-42|F:0-9    |...........|F:20-29  |..|   R &lt;-- P* &lt;-- Q
+                                                    \___________^
+
+</span></code></pre>
+<h2 id="solving-the-problem">Solving the problem</h2>
+<p>Using the overlap graph we can now answer the question: in what order should
+the vertices (segments) be written to the file so that the correct data is
+written?</p>
+<p>If the graph has no cycles then we can process the vertices in topological
+order. Topological order guarantees that each vertex is processed only when its
+dependencies have already been processed and written to file, and thus that no
+unwritten file segment in the buffer overlaps with the destination range of
+that vertex.</p>
+<p>As a special case, we can process a vertex that has a self-loop but no other
+incoming edge.  This is achieved by first writing to the file the
+non-overlapping part of the vertex and then the rest.</p>
+<p>In order to handle graphs with cycles (except self-loops) we must find a way to
+break the cycles. This can be achieved by removing the correct edges. An edge
+from P to Q can be removed by replacing Q in the buffer by the segments Q1 and
+M as described <a href="https://afrantzis.com/posts/efficient-saving-of-multi-source-buffers/#remove-overlap">previously</a>. M contains an in memory copy of
+data of the overlapping range. Q1 is the part of Q that remains. This technique
+eliminates the overlap (because the overlapping part is now stored in memory)
+and removes the edge. By choosing the edges to remove wisely, we can minimize
+the amount of extra memory we are going to need.</p>
+<p>Once we have an acyclic graph (self-loops allowed) we can process it as
+described previously.</p>
+<p>Let's manually apply this method to an example:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    P              Q                   R
+F:  |0-9      |....|15-24    |.........|35-42  |
+
+    R        P                    Q
+B4: |F:35-42|F:0-9    |...........|F:20-29  |..|   R &lt;-- P* &lt;-- Q
+                                                    \___________^
+</span></code></pre>
+<p>We first have to make the graph acyclic. We have a few choices for which edge
+to break:</p>
+<ul>
+<li>Q-&gt;P, a 3 byte overlap</li>
+<li>P-&gt;R, a 7 byte overlap</li>
+<li>R-&gt;Q, a 5 byte overlap</li>
+</ul>
+<p>To minimize the required extra memory we break the Q-&gt;P edge by storing the
+last three bytes of P in memory as segment M, so we get:</p>
+<pre class="z-code"><code><span class="z-text z-plain">    P1             Q                   R
+F:  |0-6   |.......|15-24    |.........|35-42  |
+
+    R       P1     M              Q
+B4: |F:35-42|F:0-6 |..|...........|F:20-29  |..|   Q &lt;-- R &lt;-- P1
+</span></code></pre>
+<p>Note that coincidentally we also resolved the self-loop of P. Now that we have
+an acyclic graph we can process the buffer segments in topological order, thus
+we first store P1 in range [8-14] of the file, next is R at [0-7] and finally Q
+at range [30-40] followed by all other portions of the buffer.</p>
+<h2 id="implementation-details">Implementation Details</h2>
+<p>libbls implements the solution described above when saving a file in place. The
+high level logic for the algorithm resides in
+<a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L610">bless_buffer_save</a>. The implementation of the algorithm
+within that function can be conceptually split into three steps. Some
+implementation details for each step are given below, along with links to the
+functions that provide the relevant functionality.</p>
+<h4 id="step-1-creating-the-overlap-graph">Step 1: Creating the overlap graph</h4>
+<p>Relevant functions:</p>
+<p><strong>buffer_file.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L134">create_overlap_graph</a><br />
+<strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L291">overlap_graph_add_segment</a></p>
+<p>To create the overlap graph we have to scan the buffer segment collection for
+segments that belong to the file we want to save to. Each new segment that is
+found must be checked against all previous found file segments for overlap.
+This is an <em>O(n + k*f(k))</em> algorithm where n is the number of segments in the
+segment collection and <em>k</em> the number of segments belonging to the file.  If we
+check for overlap naively then <em>f(k) = O(k)</em> and therefore the algorithm is
+<em>O(n + k*k)</em>. We can use an interval tree so that <em>f(k) = O(logk)</em> and the
+algorithm becomes <em>O(n + k*logk)</em>.  As we don't expect <em>k</em> to grow too large,
+the implementation currently uses the naive approach for simplicity.</p>
+<h4 id="step-2-making-the-graph-acyclic">Step 2: Making the graph acyclic</h4>
+<p>Relevant functions:</p>
+<p><strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L377">overlap_graph_remove_cycles</a></p>
+<p>In the second step the goal is to remove cycles from the graph, while trying to
+minimize the total weight of the removed edges in order to minimize extra
+memory usage. However, it turns out that the problem we are trying to solve,
+minimum feedback arc set, is NP-Hard! Don't despair though; we can get
+reasonable results with only little extra work.</p>
+<p>The undirected counterpart of the minimum feedback arc set problem is the
+minimum (or maximum) spanning tree (MST) problem, which can be efficiently
+solved by using various methods. We can use these methods to give a solution
+(but not the best) for our problem, too. We can do that because MST algorithms
+remove all undirected cycles and therefore all directed ones, too. The caveat
+is that they remove more that we need them to; undirected cycles that are not
+directed.</p>
+<p>MST algorithms work by processing edges in non-decreasing or non-increasing
+order of weight and adding them to the already formed tree (Prim) or trees
+(Kruskal) if they aren't already connected to them by an undirected path.
+Because our goal is to avoid directed cycles we can be more lax with the rules
+of adding an edge. A simple but useful observation is that if the destination
+node of an edge has no outgoing edges then a directed cycle cannot be formed,
+regardless of whether there is a pre-existing undirected path between the two
+nodes. Similarly, if the source node of an edge has no incoming edges a
+directed cycle cannot be formed either, regardless of the pre-existence of an
+undirected path between the source and destination nodes.</p>
+<p>We can use the previous observations to decrease the number of edges that are
+incorrectly deleted by the MST algorithms when acting on directed graphs.
+Although we don't completely eliminate the erroneous deletions, these rules
+give reasonable results while keeping the complexity the same as in the
+undirected case.</p>
+<p>Of the MST algorithms, Kruskal's algorithm can be used unchanged in directed
+graphs because it works directly on edges and doesn't care about their
+direction. It also works on disconnected graphs, since it finds a spanning
+forest. For these reasons, it was selected as the basis for the algorithm used
+by libbls.</p>
+<h4 id="step-3-removing-edges-and-saving-to-file">Step 3: Removing edges and saving to file</h4>
+<p>Relevant functions:</p>
+<p><strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L544">overlap_graph_get_removed_edges</a><br />
+<strong>buffer_file.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_file.c#L192">break_edge</a><br />
+<strong>buffer_util.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_util.c#L412">segcol_store_in_memory</a>,
+<a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/buffer_util.c#L527">segcol_store_in_file</a><br />
+<strong>overlap_graph.c</strong>: <a href="https://github.com/afrantzis/libbls/blob/17ade9439adbf2d46ed0d2a04dc9819563df38c5/src/overlap_graph.c#L618">overlap_graph_get_vertices_topo</a></p>
+<p>In the previous step we calculated which edges would need to be removed to
+create an acyclic graph. In this step we first perform the actual removal of
+these edges by storing the associated data in memory or a temporary file as
+described <a href="https://afrantzis.com/posts/efficient-saving-of-multi-source-buffers/#remove-overlap">previously</a>.</p>
+<p>Removing the edges has the unfortunate side effect of further altering the
+graph as segments are removed, added or changed in the segment collection. This
+means that after removing the edges we must re-calculate the overlap graph for
+the segment collection.  There may be some way to avoid re-calculating the
+whole graph, making only local changes to the existing graph as vertices are
+altered but we will use the simple (although more costly) way for now.</p>
+<p>We then use this new overlap graph, which is guaranteed not to have any cycles,
+to get the vertices in topological order and save them to the target file.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

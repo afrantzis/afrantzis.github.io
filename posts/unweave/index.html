@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - unweave: Unweave interleaved streams of text lines</title>
+<meta name="description" content="Introducing a command-line tool to separate interleaved streams of text lines
+into per-stream columns">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         unweave: Unweave interleaved streams of text lines
+    </h1>
+    <span class="post-date">
+        December  4, 2022
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;unweave&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>When trying to debug unexpected behaviors in applications and libraries, I
+often need to understand long and complex logs. Such logs typically contain
+interleaved lines originating from multiple components and multiple threads and
+processes. In addition to the actual message content, part of the information
+is conveyed through the temporal relationship of the log entries.</p>
+<p>However, such temporal relationships are sometimes hard to discern in the final
+interleaved output. A different view, in which each source stream of log
+entries is placed into its own column, can often provide more, or different,
+insights:</p>
+<p align="center">
+<img class="translucent" src="https://afrantzis.com/posts/unweave/unweave-example.svg"
+    alt="Unweave example"
+    width="250"
+    />
+</p>
+
+<p>This separated, or <em>unweaved</em>, view has proven to be particularly useful for me
+in the development of the <a href="https://gitlab.collabora.com/alf/wine/-/tree/wayland">Wine Wayland
+driver</a>, which is what
+triggered the development of the
+<a href="https://github.com/afrantzis/unweave">unweave</a> tool. Since Wine logs can be
+very long and involve several interacting sources of information, efficiency and
+versatility were a primary goal of <code>unweave</code>.</p>
+<p>For a practical example of <code>unweave</code>'s capabilities, consider a log file that
+contains <code>info</code> or <code>error</code> output from 3 threads <code>A</code>, <code>B</code>, <code>C</code>:</p>
+<pre class="z-code"><code><span class="z-text z-plain">[info] A: 1
+[info] A: 2
+[info] B: 1
+[error] A: 3
+[info] B: 2
+[error] C: 1
+</span></code></pre>
+<p>A natural transformed view of the log involves placing each thread in its own
+column. This is straightforward with unweave:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave &#39;A|B|C&#39; input
+[info] A: 1
+[info] A: 2
+            [info] B: 1
+[error] A: 3
+            [info] B: 2
+                       [error] C: 1
+</span></code></pre>
+<p>Typically, the output format is more complex and the relevant values not known
+in advance. For example, you may not know the exact thread names, only that
+they appear in the log in the form of <code>$TID:</code> where <code>$TID</code> is an uppercase
+alphabetic string. The pattern provided to <code>unweave</code> is a fully operational
+<del>battle station</del> regular expression, so it can handle all this too, along
+with making the columns wider:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave -c 15 &#39; ([A-Z]+): &#39; input
+[info] A: 1
+[info] A: 2
+               [info] B: 1
+[error] A: 3
+               [info] B: 2
+                              [error] C: 1
+</span></code></pre>
+<p>Perhaps it would be interesting to get a different view, with columns based on
+log types instead of threads, and also use a more distinctive column separator:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ target/release/unweave -s &#39; | &#39; &#39;^\[\w+\]&#39; input
+[info] A: 1 |
+[info] A: 2 |
+[info] B: 1 |
+            | [error] A: 3
+[info] B: 2 |
+            | [error] C: 1
+</span></code></pre>
+<p>Although separating streams into columns is the primary mode of the <code>unweave</code>
+tool, it can sometimes be useful to use separate files instead, with each
+output filename containing the stream tag and the stream id:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave --mode=files -o &#39;stream-%t-%2d&#39; &#39;A|B|C&#39; input
+$ tail -n +1 stream-*
+==&gt; stream-A-00 &lt;==
+[info] A: 1
+[info] A: 2
+[error] A: 3
+
+==&gt; stream-B-01 &lt;==
+[info] B: 1
+[info] B: 2
+
+==&gt; stream-C-02 &lt;==
+[error] C: 1
+</span></code></pre>
+<p>Visit the unweave
+<a href="https://github.com/afrantzis/unweave">repository</a> or view the
+<a href="https://github.com/afrantzis/unweave/blob/master/doc/unweave.1.md">manpage</a> to find
+out more!</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

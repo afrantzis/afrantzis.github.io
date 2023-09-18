@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Changing gdm&#x2F;lightdm user login settings programatically</title>
+<meta name="description" content="How to change the user X session and other login settings from the command-line">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Changing gdm&#x2F;lightdm user login settings programatically
+    </h1>
+    <span class="post-date">
+        June 11, 2012
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;changing-gdm-lightdm-user-login-settings-programmatically&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>Recently, as part of the automated testing efforts at Linaro, I needed to
+programmatically change the default X session for a user. It used to be the
+case that editing <code>~/.dmrc</code> was enough to achieve this. Display managers (DMs),
+such as gdm and lightdm, would read the contents of the <code>~/.dmrc</code> at login time
+to decide which language and X session to use (among other settings). When a
+user changed a setting through the GUI, the DM would write the new settings to
+<code>~/.dmrc</code> (only after successfully logging in, of course).</p>
+<p>However, all of this changed with the introduction of <em>AccountsService</em>. As the
+name suggests, <em>AccountsService</em> provides a service for the management of user
+accounts, and among other things, some of the login settings that were
+previously configured in <code>~/.dmrc</code>. It offers this functionality through the
+<code>org.freedesktop.Accounts</code> DBus service on the system bus.</p>
+<p>Modern Display Managers use <em>AccountsService</em> to manipulate user  login settings,
+falling back to <code>~/.dmrc</code> only when the service is unavailable (at least in the
+case of lightdm). What this means for the end-user is that editing <code>~/.dmrc</code>
+manually has no effect. For example, you can try changing the Session field in
+<code>~/.dmrc</code> all you want, but next time you log in you will end up in the same
+session and your <code>~/.dmrc</code> changes will have been overwritten.</p>
+<p>In order to actually change any settings we need to communicate with
+<em>AccountsService</em> through DBus. The first step is to find out the object that
+corresponds to the user we want to change the settings for. The path of this
+object is of the form <code>/org/freedesktop/Accounts/&lt;USER&gt;</code>. <code>&lt;USER&gt;</code> is usually
+of the form <code>User&lt;UID&gt;</code> but there is no guarantee of that.  Thankfully, the
+<code>/org/freedesktop/Accounts</code> object provides the
+<code>org.freedesktop.Accounts.FindUserByName</code> and
+<code>org.freedesktop.Accounts.FindUserById</code> methods, which we can use to get the
+object path for a user.</p>
+<p>Having the user object path, we can use the <code>org.freedesktop.Accounts.User.*</code>
+methods on the user object to change the required settings.</p>
+<p>We can use the dbus-send program to perform the operations mentioned above. For
+example:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> USER_PATH=<span class="z-meta z-group z-expansion z-command z-parens z-shell"><span class="z-punctuation z-definition z-variable z-shell">$</span><span class="z-punctuation z-section z-parens z-begin z-shell">(</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">dbus-send</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>print-reply</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span>literal<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>system</span><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>dest</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span>org.freedesktop.Accounts /org/freedesktop/Accounts org.freedesktop.Accounts.FindUserById int64:1000</span><span class="z-punctuation z-section z-parens z-end z-shell">)</span></span></span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> dbus-send<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>print-reply</span><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>system</span><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>dest</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span>org.freedesktop.Accounts <span class="z-meta z-group z-expansion z-parameter z-shell"><span class="z-punctuation z-definition z-variable z-shell">$</span><span class="z-variable z-other z-readwrite z-shell">USER_PATH</span></span> org.freedesktop.Accounts.User.SetXSession string:<span class="z-string z-quoted z-single z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&#39;</span>xterm<span class="z-punctuation z-definition z-string z-end z-shell">&#39;</span></span></span>
+</span></code></pre>
+<p>As I needed to get and set the X session for a user in a user-friendly manner,
+I decided to create a small python program instead. You can find the program
+here: <a href="http://bazaar.launchpad.net/~linaro-graphics-wg/linaro-graphics-tests/trunk/view/head:/scripts/user_xsession.py">user_xsession.py</a></p>
+<p>You can use user_xsession.py like:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ./user_xsession.py <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>-<span class="z-keyword z-operator z-word z-shell">-</span>user<span class="z-keyword z-operator z-word z-shell">-</span>id &lt;ID&gt;|<span class="z-keyword z-operator z-word z-shell">-</span><span class="z-keyword z-operator z-word z-shell">-</span>user<span class="z-keyword z-operator z-word z-shell">-</span>name &lt;NAME&gt;<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span> set <span class="z-keyword z-operator z-assignment z-redirection z-shell">&lt;</span>SESSION<span class="z-keyword z-operator z-assignment z-redirection z-shell">&gt;</span>
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ./user_xsession.py <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>-<span class="z-keyword z-operator z-word z-shell">-</span>user<span class="z-keyword z-operator z-word z-shell">-</span>id &lt;ID&gt;|<span class="z-keyword z-operator z-word z-shell">-</span><span class="z-keyword z-operator z-word z-shell">-</span>user<span class="z-keyword z-operator z-word z-shell">-</span>name &lt;NAME&gt;<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span> get</span>
+</span></code></pre>
+<p>where <SESSION> is one of the sessions available in <code>/usr/share/xsessions/</code>.
+Note that you may need to run as root, depending on the account you want to
+change the settings for.</p>
+<p>For example:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ./user_xsession.py<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>user-id</span> 1000 set xterm</span>
+</span></code></pre>
+<p>You can easily tweak the program to change another setting instead of the X
+session.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

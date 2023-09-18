@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+      <title>A mind forever voyaging</title>
+      <meta name="description" content="A peek into the mind of Alexandros Frantzis">
+      
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         Reverse engineering an old Windows game for fun and compatibility
+    </h1>
+    <span class="post-date">
+        December 31, 2022
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;reverse-engineering-an-old-windows-game&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A few months ago I decided to revisit <a href="https://en.wikipedia.org/wiki/The_Last_Express">The Last
+Express</a>, one of the most
+unique adventure games of the 1990s. Since the version I have (from 1997)
+provided a Windows executable, I decided to run it using the Wayland driver for
+Wine. Eager to treat myself to a nostalgic journey, I ran the game and saw...
+nothing! I could hear the ominous menu music, but all I got was a minimized
+window which completely ignored my attempts at restoration. I tried the game
+with the Wine X11 driver and it worked as expected.</p>
+<p>Disappointed, but also determined to get this working with the Wayland driver, I
+ran the game with Wine debug logging turned on. The strange minimization
+behavior led me to turn my attention to the <code>SetWindowPos</code> and <code>ShowWindow</code>
+calls, hoping that I would get some insight about what was affecting the window
+state. Here is what I got for the game start up, with some additional comments:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window being created and resized to 640x480</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000037</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=5, was_visible 0</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000043</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after 0xffffffff, 0,0 (1600x920</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000070</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000003</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000050</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000037</span>
+<span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window is minimized (6=SW_MINIMIZE)</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=6, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=6</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>32000</span>,-32000 (160x24</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008174</span>
+</span></code></pre>
+<p>When trying to restore the minimized window I got:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window is restored to 640x480...</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=9, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=9</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008120</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000014</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000050</span>
+<span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## ...but then immediately minimized again!</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=6, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=6</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>32000</span>,-32000 (160x24</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008174</span>
+</span></code></pre>
+<p>It seemed that some logic was forcing the window to always become minimized.
+After briefly exploring the possibility of the Wayland driver or Wine core doing
+something fancy, I reached the conclusion that the minimization logic lived in
+the application itself.</p>
+<p>Why did the application minimize itself when running with the Wayland driver? A
+mystery befitting the theme of the game itself!</p>
+<p>In order to gain more insights, I had to take a peek into the inner workings
+of the game. I loaded the <code>_le.exe</code> executable in Ghidra, analyzed it with
+the default options and I searched for symbols references to <code>ShowWindow</code>:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-symrefs.png" alt="ghidra-le-symrefs.png" /></p>
+<p>The first entry was for the location within the <a href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#import-address-table">Import Address Table
+(IAT)</a>
+which the dynamic linker will fill in with the address of the
+<code>CWnd::ShowWindow</code> function from <code>MFC42.DLL</code>.</p>
+<p>The second entry was the <code>CWnd::ShowWindow</code> thunk function within <code>_le.exe</code>,
+which transfers control to the real <code>CWnd::ShowWindow</code> function by using
+the address from the IAT location described above:</p>
+<pre data-lang="asm" class="language-asm z-code"><code class="language-asm" data-lang="asm"><span class="z-source z-assembly"><span class="z-entity z-name z-function z-assembly">0</span><span class="z-entity z-name z-function z-assembly">0</span><span class="z-entity z-name z-function z-assembly">4</span><span class="z-entity z-name z-function z-assembly">a</span><span class="z-entity z-name z-function z-assembly">8</span><span class="z-entity z-name z-function z-assembly">9</span><span class="z-entity z-name z-function z-assembly">9</span><span class="z-entity z-name z-function z-assembly">6</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-keyword z-control z-assembly">JMP</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-support z-function z-directive z-assembly">dword</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-support z-function z-directive z-assembly">ptr</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-source z-assembly">[</span><span class="z-source z-assembly">-</span><span class="z-entity z-name z-function z-assembly">&gt;</span><span class="z-entity z-name z-function z-assembly">M</span><span class="z-entity z-name z-function z-assembly">F</span><span class="z-entity z-name z-function z-assembly">C</span><span class="z-entity z-name z-function z-assembly">4</span><span class="z-entity z-name z-function z-assembly">2</span><span class="z-entity z-name z-function z-assembly">.</span><span class="z-entity z-name z-function z-assembly">D</span><span class="z-entity z-name z-function z-assembly">L</span><span class="z-entity z-name z-function z-assembly">L</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">C</span><span class="z-entity z-name z-function z-assembly">W</span><span class="z-entity z-name z-function z-assembly">n</span><span class="z-entity z-name z-function z-assembly">d</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">S</span><span class="z-entity z-name z-function z-assembly">h</span><span class="z-entity z-name z-function z-assembly">o</span><span class="z-entity z-name z-function z-assembly">w</span><span class="z-entity z-name z-function z-assembly">W</span><span class="z-entity z-name z-function z-assembly">i</span><span class="z-entity z-name z-function z-assembly">n</span><span class="z-entity z-name z-function z-assembly">d</span><span class="z-entity z-name z-function z-assembly">o</span><span class="z-entity z-name z-function z-assembly">w</span><span class="z-source z-assembly">]</span>
+</span></code></pre>
+<p>This import immediately provided a hint that the game was using Microsoft
+Foundation Classes, i.e., object-oriented wrappers around the Win32 API, and as
+such I should be on the lookout for standard object-oriented patterns.</p>
+<p>The thunk function is what the application actually calls internally, and in
+the list above I could see several references to it. Alas, I checked the code
+at each reference location, but none was passing <code>6</code> (<code>SW_MINIMIZE</code>) as the
+show command. Could there be other references to the <code>CWnd::ShowWindow</code> thunk
+that Ghidra was missing?</p>
+<p>I decided to get a second opinion from <code>radare2</code>:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ radare2 -A _le.exe
+[x] Analyze all flags starting with sym. and entry0 (aa)
+[x] Analyze function calls (aac)
+[x] Analyze len bytes of instructions for references (aar)
+[x] Finding and parsing C++ vtables (avrr)
+[x] Type matching analysis for all functions (aaft)
+[x] Propagate noreturn information (aanr)
+[x] Use -AA or aaaa to perform additional experimental analysis.
+[0x004a8cf0]&gt; axt 0x004a8996
+(nofunc) 0x40fbe8 [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45a37e [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045a480 0x45a54a [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45af0e [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45afa7 [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45b018 [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045b940 0x45b9a4 [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045b940 0x45b9ea [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045ba20 0x45bb92 [CALL] call sub.MFC42.DLL_Ordinal_6215
+</span></code></pre>
+<p>There were indeed more references to the <code>CWnd::ShowWindow</code> thunk. I noted
+that the references Ghidra was missing didn't belong to any known function
+(<code>(nofunc)</code> in radare2), and that was the reason they weren't detected by
+default. The solution was to rerun Ghidra's analysis with the &quot;Aggressive
+Instruction Finder&quot; option turned on, which gave me the following references:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-symrefs-aggresive.png" alt="ghidra-le-symrefs-aggresive.png" /></p>
+<p>Note that the <code>0x45a37e</code> reference was still missing from Ghidra. I was able to
+to add it by manually marking the region as code (in fact the relevant function
+seems to start at <code>0x45a340</code>). In the end it didn't matter, though, since that
+particular invocation was using the <code>9 (SW_RESTORE)</code> command, so was not
+relevant for our investigation.</p>
+<p>From the updated reference list above there were two that involved a
+minimization command, at <code>0x45af0e</code> and <code>0x45afa7</code>. The function at <code>0x45ae10</code>
+which contained the <code>0x45af0e</code> reference was decompiled by Ghidra as:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ae10.png" alt="ghidra-le-decompile-45ae10.png" /></p>
+<p>Although the high-level flow of this function was clear enough, I must say I
+didn't become more enlightened about the condition(s) that could lead to
+minimization. A quick look at some of the invoked functions indicated that a
+deeper investigation was required to understand how all this works, so I
+decided to move to the next function and revisit later, if needed.</p>
+<p>The second reference <code>0x45afa7</code> was part of the of the <code>0x45af70</code> function:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70.png" alt="ghidra-le-decompile-45af70.png" /></p>
+<p>This was more promising, with a very clear check affecting minimization at
+the start of the function! As I could see from the decompiler output, the first
+argument was effectively a <code>CWnd *</code>. The unconditional call to
+<code>CWnd::OnDisplayChange</code> at the end allowed me to reasonably (and ultimately
+correctly) assume that this function was in fact an override of the
+<code>OnDisplayChange</code> method for a custom class inheriting from <code>CWnd</code>, so I
+named this function <code>LExpressCWnd::OnDisplayChange</code>.</p>
+<p>The documentation for <code>CWnd::OnDisplayChange</code> was (and still is) surprisingly
+scarce online, but in a <a href="https://learn.microsoft.com/en-us/cpp/porting/visual-cpp-change-history-2003-2015">Microsoft C/C++
+changelog</a>
+I found the following:</p>
+<blockquote>
+<p>CWnd::OnDisplayChange changed to (UINT, int, int) instead of (WPARAM, LPARAM)
+so that the new ON_WM_DISPLAYCHANGE macro can be used in the message map.</p>
+</blockquote>
+<p>Since the game predated these changes, I determined that <code>param_1</code>
+and <code>param_2</code> were really <code>wparam</code> and <code>lparam</code> of the corresponding
+<code>WM_DISPLAYCHANGE</code> message. From the <code>WM_DISPLAYCHANGE</code>
+<a href="https://learn.microsoft.com/en-us/windows/win32/gdi/wm-displaychange">documentation</a>:</p>
+<blockquote>
+<p><em>wParam</em><br />
+The new image depth of the display, in bits per pixel.<br />
+<em>lParam</em><br />
+The low-order word specifies the horizontal resolution of the screen.<br />
+The high-order word specifies the vertical resolution of the screen.</p>
+</blockquote>
+<p>The pieces of the puzzle finally started to fall into place! Taking into
+account the new information I updated the decompiled source like so:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70-16bpp.png" alt="ghidra-le-decompile-45af70-16bpp.png" /></p>
+<p>There was a lot missing still, but the main takeway, in the highlighted part of
+the code above, was that if the display mode was changed to one that did not
+use 16 bits per pixel, the application unceremoniously minimized itself!</p>
+<p>Indeed, in that older version of the Wayland driver for Wine we were choosing a
+32-bit mode regardless of what the application specified. This worked for most
+DirectX games since Wine internally deals with the inconsistency. However, <em>The
+Last Express</em> explicitly checks the bits per pixel value sent with the
+<code>WM_DISPLAYCHANGE</code> message and our ploy is exposed!</p>
+<p>I updated the Wayland driver to properly set the <code>WM_DISPLAYCHANGE</code> bits per
+pixel parameter, and verified that this fixed the minimization problem. I was
+finally able to continue my (train) trip down memory lane!</p>
+<p>You can see <em>The Last Express</em> in action with the Wayland driver
+<a href="https://www.youtube.com/watch?v=lZ-MK72Kyp8&amp;t=615s">here</a>.</p>
+<h2 id="bonus-material">Bonus material</h2>
+<p>Although this partial analysis was enough to allow me to resolve the task at
+hand, I remained curious about some of the details of display configuration and
+the unexplained aspects of the <code>LExpressCWnd::OnDisplayChange</code> function. To
+explore further, I tracked symbol references to the <code>ChangeDisplaySettingsA</code>
+function from <code>USER32.DLL</code> and came across two invocations in <code>_le.exe</code>. I will
+spare you the details, but one reference was from a function that I determined
+configured the display mode for the game (which I named
+<code>LExpressCWnd::ConfigureDisplay</code> at <code>0x45ba20</code>), and the other from a function
+that restored the original mode (<code>LExpressCwnd::RestoreDisplay</code> at <code>0x45bbd0</code>).
+One interesting point about these invocations was that the code was tracking
+the kind of display configuration operation the game was performing, by using
+fields in <code>LExpressCWnd</code>. For example, in <code>LExpressCWnd::ConfigureDisplay</code>
+there was the following decompiled snippet (after giving some more descriptive
+names):</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ba20-snippet.png" alt="ghidra-le-decompile-45ba20-snippet.png" /></p>
+<p>The <code>LExpressCWnd::configuring_display</code> field and the corresponding
+<code>LExpressCWnd::restoring_display</code> used in <code>LExpressCWnd::RestoreDisplay</code>, were
+two of the mysterious fields used in <code>LExpressCWnd::OnDisplayChange</code>. The idea
+is that <code>ChangeDisplaySettingsA</code> sends the <code>WM_DISPLAYCHANGE</code> message
+synchronously, and thus <code>LExpressCWnd::OnDisplayChange</code> is called in the
+context of that invocation, reading the values of these fields.</p>
+<p>With all this new information and a lot of additional exploration in the
+executable, I reached this more complete version of
+<code>LExpressCWnd::OnDisplayChange</code>:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70-final.png" alt="ghidra-le-decompile-45af70-final.png" /></p>
+<p>Fortuitously, the discovery of the
+<code>LExpressCWnd::ConfigureDisplay/RestoreDisplay</code> functions also helped to shed
+some light on the mysterious function at <code>0x45ae10</code> which we encountered
+earlier in this post. My best guess about that function was that it handles the
+(de)activation of the game window, so I named it <code>LExpressCWnd::OnActivate</code>. On
+activation it increases the game thread priority and configures the display
+mode (if in fullscreen mode). On deactivation it sets the game thread priority
+to normal, restores the display mode and minimizes the window. My final
+decompilation looks like:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ae10-final.png" alt="ghidra-le-decompile-45ae10-final.png" /></p>
+
+</div>
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         unweave: Unweave interleaved streams of text lines
+    </h1>
+    <span class="post-date">
+        December  4, 2022
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;unweave&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>When trying to debug unexpected behaviors in applications and libraries, I
+often need to understand long and complex logs. Such logs typically contain
+interleaved lines originating from multiple components and multiple threads and
+processes. In addition to the actual message content, part of the information
+is conveyed through the temporal relationship of the log entries.</p>
+<p>However, such temporal relationships are sometimes hard to discern in the final
+interleaved output. A different view, in which each source stream of log
+entries is placed into its own column, can often provide more, or different,
+insights:</p>
+<p align="center">
+<img class="translucent" src="https://afrantzis.com/posts/unweave/unweave-example.svg"
+    alt="Unweave example"
+    width="250"
+    />
+</p>
+
+<p>This separated, or <em>unweaved</em>, view has proven to be particularly useful for me
+in the development of the <a href="https://gitlab.collabora.com/alf/wine/-/tree/wayland">Wine Wayland
+driver</a>, which is what
+triggered the development of the
+<a href="https://github.com/afrantzis/unweave">unweave</a> tool. Since Wine logs can be
+very long and involve several interacting sources of information, efficiency and
+versatility were a primary goal of <code>unweave</code>.</p>
+<p>For a practical example of <code>unweave</code>'s capabilities, consider a log file that
+contains <code>info</code> or <code>error</code> output from 3 threads <code>A</code>, <code>B</code>, <code>C</code>:</p>
+<pre class="z-code"><code><span class="z-text z-plain">[info] A: 1
+[info] A: 2
+[info] B: 1
+[error] A: 3
+[info] B: 2
+[error] C: 1
+</span></code></pre>
+<p>A natural transformed view of the log involves placing each thread in its own
+column. This is straightforward with unweave:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave &#39;A|B|C&#39; input
+[info] A: 1
+[info] A: 2
+            [info] B: 1
+[error] A: 3
+            [info] B: 2
+                       [error] C: 1
+</span></code></pre>
+<p>Typically, the output format is more complex and the relevant values not known
+in advance. For example, you may not know the exact thread names, only that
+they appear in the log in the form of <code>$TID:</code> where <code>$TID</code> is an uppercase
+alphabetic string. The pattern provided to <code>unweave</code> is a fully operational
+<del>battle station</del> regular expression, so it can handle all this too, along
+with making the columns wider:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave -c 15 &#39; ([A-Z]+): &#39; input
+[info] A: 1
+[info] A: 2
+               [info] B: 1
+[error] A: 3
+               [info] B: 2
+                              [error] C: 1
+</span></code></pre>
+<p>Perhaps it would be interesting to get a different view, with columns based on
+log types instead of threads, and also use a more distinctive column separator:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ target/release/unweave -s &#39; | &#39; &#39;^\[\w+\]&#39; input
+[info] A: 1 |
+[info] A: 2 |
+[info] B: 1 |
+            | [error] A: 3
+[info] B: 2 |
+            | [error] C: 1
+</span></code></pre>
+<p>Although separating streams into columns is the primary mode of the <code>unweave</code>
+tool, it can sometimes be useful to use separate files instead, with each
+output filename containing the stream tag and the stream id:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ unweave --mode=files -o &#39;stream-%t-%2d&#39; &#39;A|B|C&#39; input
+$ tail -n +1 stream-*
+==&gt; stream-A-00 &lt;==
+[info] A: 1
+[info] A: 2
+[error] A: 3
+
+==&gt; stream-B-01 &lt;==
+[info] B: 1
+[info] B: 2
+
+==&gt; stream-C-02 &lt;==
+[error] C: 1
+</span></code></pre>
+<p>Visit the unweave
+<a href="https://github.com/afrantzis/unweave">repository</a> or view the
+<a href="https://github.com/afrantzis/unweave/blob/master/doc/unweave.1.md">manpage</a> to find
+out more!</p>
+
+</div>
+
+
+    
+<div class="post">
+    <h1 class="post-title">
+         GitLab merge diffs for branches that rewrite commit history
+    </h1>
+    <span class="post-date">
+        October 22, 2022
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;gitlab-merge-diffs&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>For the development of the Wayland driver for Wine we have been maintaining a
+commit series on top of upstream Wine, which we want to keep clean and easily
+reviewable.</p>
+<p>For this reason, most proposed changes in the code do not typically appear as
+new fix commits on top of the current series, but rather transform the existing
+series in place, producing an updated clean version. For example, if we have
+the commit series <em>a-b-c-d-e</em>, an update may fix something in <em>c</em>, leading to
+the updated series <em>a-b-f-d'-e'</em> (we use <em>d'/e'</em> to signify that the commit
+introduces the same changes as <em>d/e</em>).</p>
+<p>Although in this instance we have good reasons to use git in this manner, this
+public rewriting of commit history is not how git is typically used, and we
+have found that some tools do not deal too well with this scenario.</p>
+<p>One particular pain point we have encountered is in our internal reviewing
+process. Although it doesn't seem possible to use GitLab to perform the actual
+merge of a branch that rewrites history, we would still like to get a sensible
+merge diff for reviews and discussion. However, when we try this we are
+presented with a seemingly non-sensical diff. To understand what's going on,
+and hopefully find a solution, we need to dive in more deeply into how GitLab,
+and similar tools, produce merge diffs.</p>
+<p>Before we start our journey it would be beneficial to establish a common
+vocabulary for commits and operations on them. Please read the
+<a href="https://afrantzis.com/posts/gitlab-merge-diffs/./#Appendix">Appendix</a> for details about the notation used in this post.</p>
+<h2 id="gitlab-merge-diffs">GitLab merge diffs</h2>
+<p>GitLab provides
+<a href="https://docs.gitlab.com/ee/development/diffs.html#merge-request-diffs-against-the-head-of-the-target-branch">two merge diff methods</a>,
+<em>base</em> and <em>HEAD</em>.</p>
+<p><em>base</em> is the older method and works by using the <em>...</em> diff operator. The
+<em>...</em> diff operator aims to provide a diff that represents the intention of the
+developer at the time of branching, regardless of the current state of the
+<em>target</em> branch. It achieves this by finding the most recent
+<a href="https://afrantzis.com/posts/gitlab-merge-diffs/./#CommonAncestor"><em>CommonAncestor</em></a> of <em>target</em> and <em>source</em>, also called the
+<em>merge base</em>, and diff-ing the source with that ancestor. In the example below:</p>
+
+
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='481.12307692307695' height='160.44615384615383' viewBox='0 0 481.12307692307695 160.44615384615383' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3ffcf' stroke='black' cx='184.431' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>g</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>h</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='123.823' y1='40.8784' x2='165.284' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='123.823,40.8784, 129.465,51.6272 135.413,44.4895' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='209.354' y1='91.3846' x2='239.262' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,91.3846, 220.569,96.0302 220.569,86.7391' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><g stroke-dasharray='5,5'><line x1='343.938' y1='157.846' x2='343.938' y2='116.308' stroke='black' /></g><g stroke-dasharray='5,5'><line x1='104.677' y1='157.846' x2='343.938' y2='157.846' stroke='black' /></g><g stroke-dasharray='5,5'><line x1='104.677' y1='49.8462' x2='104.677' y2='157.846' stroke='black' /></g><text text-anchor='start' dominant-baseline='middle' x='383.815' y='24.9231' font-size='18.0000'>target</text><text text-anchor='start' dominant-baseline='middle' x='383.815' y='91.3846' font-size='18.0000'>source</text></g></svg></div>
+<p><em>b</em> is the most recent ancestor of <em>target</em> and <em>source</em>, so we get:</p>
+<blockquote>
+<p><em>Diff target...source =</em> <br/>
+<em>Diff (CommonAncestor target source)..source =</em> <br/>
+<em>Diff b..h</em></p>
+</blockquote>
+<p>Changes in the <em>target</em> branch after the <em>source</em>'s branching point are
+effectively ignored by the <em>...</em> diff.</p>
+<p>The problem with the <em>base</em> method is that the produced diff contents tend to
+become obsolete as the merge target (which is typically the <em>master</em>/<em>main</em>
+branch) evolves. To make the diff more accurate the <em>HEAD</em> diff method was
+introduced.</p>
+<p>In the <em>HEAD</em> method the <em>target</em> branch is merged into the <em>source</em> branch, and
+the resulting commit of that merge is compared with the <em>target</em> branch <sup class="footnote-reference"><a href="#1">1</a></sup>.</p>
+
+
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='501.0615384615385' height='185.36923076923074' viewBox='0 0 501.0615384615385 185.36923076923074' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#ffe1b3' stroke='black' cx='383.815' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='383.815' y='91.3846' font-size='18.0000'fill=black>m</text><circle fill='#b3ffcf' stroke='black' cx='184.431' cy='157.846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='157.846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='157.846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='157.846' font-size='18.0000'fill=black>g</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='157.846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='157.846' font-size='18.0000'fill=black>h</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='117.500' y1='46.2944' x2='171.608' y2='136.475' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='117.500,46.2944, 119.286,58.3017 127.254,53.5214' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='285.971' y1='37.0268' x2='362.029' y2='79.2809' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='285.971,37.0268, 293.519,46.5344 298.031,38.4125' /><line x1='209.354' y1='157.846' x2='239.262' y2='157.846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,157.846, 220.569,162.492 220.569,153.201' /><line x1='289.108' y1='157.846' x2='319.015' y2='157.846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,157.846, 300.323,162.492 300.323,153.201' /><line x1='356.761' y1='136.475' x2='370.993' y2='112.756' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='356.761,136.475, 366.515,129.248 358.548,124.468' /><g stroke-dasharray='5,5'><line x1='264.185' y1='91.3846' x2='358.892' y2='91.3846' stroke='black' /></g><g stroke-dasharray='5,5'><line x1='264.185' y1='49.8462' x2='264.185' y2='91.3846' stroke='black' /></g><text text-anchor='start' dominant-baseline='middle' x='403.754' y='24.9231' font-size='18.0000'>target</text><text text-anchor='start' dominant-baseline='middle' x='403.754' y='157.846' font-size='18.0000'>source</text></g></svg></div>
+<p>In this case the produced diff comes from :</p>
+<blockquote>
+<p><em>Diff target..(MergeInto target source) =</em> <br/>
+<em>Diff d..m</em></p>
+</blockquote>
+<p>This diff is a more accurate representation of what one would expect if the source
+branch was actually merged at that point in time.</p>
+<p>However, the <em>HEAD</em> method may fail due to conflicts during merge, and, in this
+case, the current GitLab behavior is to fall back to <em>base</em>.</p>
+<h2 id="the-problem">The problem</h2>
+<p>Now, let's consider what happens when we ask GitLab to provide the merge diff
+for our original example, trying to merge a branch <em>fix</em> that rewrites history,
+into <em>master</em>:</p>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='501.0615384615385' height='118.90769230769229' viewBox='0 0 501.0615384615385 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='184.431' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>d'</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>e'</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='123.823' y1='40.8784' x2='165.284' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='123.823,40.8784, 129.465,51.6272 135.413,44.4895' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='209.354' y1='91.3846' x2='239.262' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,91.3846, 220.569,96.0302 220.569,86.7391' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><text text-anchor='start' dominant-baseline='middle' x='403.754' y='24.9231' font-size='18.0000'>master</text><text text-anchor='start' dominant-baseline='middle' x='403.754' y='91.3846' font-size='18.0000'>fix</text></g></svg></div>
+<p>First GitLab will try the <em>HEAD</em> method. If the merge of <em>master</em> into <em>fix</em>
+succeeds then we will get a nice diff. Chances are that this merge will fail,
+so we will fall back to the <em>base</em> method. The <em>base</em> method will then give us
+<code>git diff b..e'</code> whereas we would like to see <code>git diff e..e'</code>.</p>
+<h2 id="making-the-head-method-work">Making the <em>HEAD</em> method work</h2>
+<p>How can we trick GitLab into producing a sane diff for our reviewing purposes?
+One idea is to try to make the <em>HEAD</em> method succeed and provide the expected
+results. This can be expressed by the following pseudo-equations:</p>
+<blockquote>
+<p><em>Diff master..(MergeInto master fix) = Diff master..fix</em> <br/>
+<em>Tree (MergeInto master fix) = Tree fix</em></p>
+</blockquote>
+<p>If we could change that pesky
+<a href="https://afrantzis.com/posts/gitlab-merge-diffs/./#MergeInto"><em>MergeInto</em></a> operation to become
+<a href="https://afrantzis.com/posts/gitlab-merge-diffs/./#MergeIntoKeepTarget"><em>MergeIntoKeepTarget</em></a> we would get our result instantly.
+Sadly, changing GitLab itself is outside the scope of this effort.</p>
+<p>Not all is lost, however. We can't change <em>MergeInto</em> or <em>master</em>, but we are
+free to change <em>fix</em> (since we are the ones proposing it) to fulfill the
+equation. The only requirement is that the changed <em>fix</em>, let's call it <em>fix'</em>,
+has the same tree contents as <em>fix</em> itself (although it may have additional
+merge parents).</p>
+<p>But which <em>fix'</em> can we use to fulfill the above equality? There is a notable
+property of merging that we can make use of: if the merge target already has
+the merge source as a merge parent then the merge operation is a no-op. In
+other words the following holds:</p>
+<blockquote>
+<p><em>SomeMerge2 x (SomeMerge1 x y) = SomeMerge1 x y</em></p>
+</blockquote>
+<p>This property allows us to simplify our previous equation to:</p>
+<blockquote>
+<p><em>Tree (MergeInto master fix') = Tree fix'</em></p>
+</blockquote>
+<p>as long as <em>fix'</em> is of the form <em>SomeMerge master fix</em>. Given that we want
+<em>fix'</em> to have the same contents as <em>fix</em>, the decision about which merge
+to use is easy:</p>
+<blockquote>
+<p><em>fix' = MergeIntoKeepTarget master fix</em> <br/></p>
+</blockquote>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='560.876923076923' height='118.90769230769229' viewBox='0 0 560.876923076923 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='184.431' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>d'</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>e'</text><circle fill='#b3ffcf' stroke='black' cx='423.692' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='423.692' y='91.3846' font-size='18.0000'fill=black>m</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='123.823' y1='40.8784' x2='165.284' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='123.823,40.8784, 129.465,51.6272 135.413,44.4895' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='363.085' y1='40.8784' x2='404.546' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='363.085,40.8784, 368.727,51.6272 374.675,44.4895' /><line x1='209.354' y1='91.3846' x2='239.262' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,91.3846, 220.569,96.0302 220.569,86.7391' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><line x1='368.862' y1='91.3846' x2='398.769' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='368.862,91.3846, 380.077,96.0302 380.077,86.7391' /><text text-anchor='start' dominant-baseline='middle' x='463.569' y='24.9231' font-size='18.0000'>master</text><text text-anchor='start' dominant-baseline='middle' x='463.569' y='91.3846' font-size='18.0000'>fix'</text></g></svg></div>
+<p>Here is what happens if we use the GitLab <em>HEAD</em> method to produce the diff of
+merging <em>fix'</em> into <em>master</em>:</p>
+<blockquote>
+<p><em>Diff master..(MergeInto master fix') = Diff e..(MergeInto e m)</em> <br/></p>
+</blockquote>
+<p>Since <em>m</em> already has <em>e</em> as a merge parent, <em>MergeInto e m</em> just gives <em>m</em>, so we get:</p>
+<blockquote>
+<p><em>... = Diff e..m</em> <br/></p>
+</blockquote>
+<p>Because <em>MergeIntoKeepTarget</em> gave <em>m</em> the same tree contents as <em>e'</em> we can replace one
+for the other in the <code>..</code> diff operation:</p>
+<blockquote>
+<p><em>... = Diff e..e' = Diff master..fix</em></p>
+</blockquote>
+<h2 id="making-the-base-method-work">Making the <em>base</em> method work</h2>
+<p>How about trying to bend the <em>base</em> method to our will? This could be useful
+for systems that don't support <em>HEAD</em> (i.e., GitHub or older versions of
+GitLab). This is expressed by the following pseudo-equations:</p>
+<blockquote>
+<p><em>Diff master...fix = Diff master..fix // Note three vs two dot diffs</em> <br/>
+<em>Diff (CommonAncestor master fix)..fix = Diff master..fix</em></p>
+</blockquote>
+<p>As in our previous attempt, we can't change <em>master</em>, but we can change
+<em>fix</em>, as long as we produce a new <em>fix'</em> with the same contents:</p>
+<blockquote>
+<p><em>Diff (CommonAncestor master fix')..fix' = Diff master..fix</em> <br/>
+<em>Tree (CommonAncestor master fix') = Tree master AND Tree fix' = Tree fix</em></p>
+</blockquote>
+<p>But which <em>fix'</em> can we use to fulfill the above equality this time? Another
+interesting property comes to the rescue: if commit <em>x</em> is an ancestor of <em>y</em>,
+then <em>CommonAncestor x y = x</em>. This provides a possible way forward: we need to
+make <em>master</em> an ancestor of <em>fix'</em>. The only way to change commit connections
+is with a merge, and we have just the merge we need,
+<a href="https://afrantzis.com/posts/gitlab-merge-diffs/./#MergeIntoKeepTarget"><em>MergeIntoKeepTarget</em></a>:</p>
+<blockquote>
+<p><em>fix' = MergeIntoKeepTarget master fix</em> <br/></p>
+</blockquote>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='560.876923076923' height='118.90769230769229' viewBox='0 0 560.876923076923 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='184.431' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>d'</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>e'</text><circle fill='#b3ffcf' stroke='black' cx='423.692' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='423.692' y='91.3846' font-size='18.0000'fill=black>m</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='123.823' y1='40.8784' x2='165.284' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='123.823,40.8784, 129.465,51.6272 135.413,44.4895' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='363.085' y1='40.8784' x2='404.546' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='363.085,40.8784, 368.727,51.6272 374.675,44.4895' /><line x1='209.354' y1='91.3846' x2='239.262' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,91.3846, 220.569,96.0302 220.569,86.7391' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><line x1='368.862' y1='91.3846' x2='398.769' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='368.862,91.3846, 380.077,96.0302 380.077,86.7391' /><text text-anchor='start' dominant-baseline='middle' x='463.569' y='24.9231' font-size='18.0000'>master</text><text text-anchor='start' dominant-baseline='middle' x='463.569' y='91.3846' font-size='18.0000'>fix'</text></g></svg></div>
+<p>By a happy coincidence (or is it?) we again get the same solution as with the
+<em>HEAD</em> method!</p>
+<p>Here is what happens if we use the GitLab <em>base</em> method to produce the diff of
+merging <em>fix'</em> into <em>master</em>:</p>
+<blockquote>
+<p><em>Diff master...fix' = Diff e...m</em></p>
+</blockquote>
+<p>The ancestry relationship between <em>m</em> and <em>e</em> makes the <code>...</code> diff operator
+between them act effectively like the <code>..</code> diff operator, so we get:</p>
+<blockquote>
+<p><em>... = Diff e..m</em> <br/></p>
+</blockquote>
+<p>Because <em>MergeIntoKeepTarget</em> gave m the same tree contents as e' we can replace one
+for the other in the <code>..</code> diff operation:</p>
+<blockquote>
+<p><em>... = Diff e..e' = Diff master..fix</em></p>
+</blockquote>
+<h2 id="putting-theory-into-practice">Putting theory into practice</h2>
+<p>The theory behind our solution may be somewhat involved, but it leads to a
+straightforward practical recipe. It all boils down to creating the <em>fix'</em>
+commit and using that as our merge request source. Since:</p>
+<blockquote>
+<p><em>fix' = MergeIntoKeepTarget master fix</em></p>
+</blockquote>
+<p>we can create a detached/disposable <em>fix'</em> by doing:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git checkout<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>detach</span> fix</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git merge<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>sours</span> master</span>
+</span></code></pre>
+<p>Then we can push our detached <em>fix'</em> to our MR branch, for example by doing:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git push our-remote HEAD:fix</span>
+</span></code></pre>
+<p>We can also verify that our solution works by locally getting the diff that
+GitLab will produce for the <em>base</em> method:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git diff master...HEAD</span>
+</span></code></pre>
+<p>And for the <em>HEAD</em> method:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git merge master</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">Already</span></span><span class="z-meta z-function-call z-arguments z-shell"> up to date</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git diff master..HEAD</span>
+</span></code></pre>
+<h2 id="Appendix">Appendix: A notation for commits and their operations</h2>
+<p>In the notation used in this post each commit is represented by a letter,
+denoting the changes introduced by the commit. A prime (<em>'</em>) symbol (e.g.,
+<em>a'</em>) denotes a commit introducing the same changes as its non-prime
+counterpart.</p>
+<p>A commit series is denoted with a graph of commits, each commit pointing to its
+parent(s). A fork in the graph is a branching point:</p>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='371.4615384615385' height='118.90769230769229' viewBox='0 0 371.4615384615385 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>g</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='203.577' y1='40.8784' x2='245.038' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='203.577,40.8784, 209.219,51.6272 215.167,44.4895' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /></g></svg></div>
+<p>A few interesting operations:</p>
+<h3 id="Tree">Tree x</h3>
+<p>The contents of the tree at commit <em>x</em>.</p>
+<h3 id="CommonAncestor">CommonAncestor x y</h3>
+<p>The most recent common ancestor of commits <em>x</em> and <em>y</em>. For example, in our
+sample commit graph we have <em>CommonAncestor e g = c</em>.</p>
+<h3 id="DiffTwo">Diff x..y</h3>
+<p>The difference between the tree contents of commits <em>x</em> and <em>y</em>.</p>
+<h3 id="DiffTwo">Diff x...y</h3>
+<p>The difference between the tree contents of commit <em>y</em> and <em>base = CommonAnsestor x y</em>.</p>
+<h3 id="MergeInto">MergeInto x y</h3>
+<p>Merges tip <em>x</em> into tip <em>y</em>, producing a new commit. For example, <em>MergeInto e g</em>
+produces the following <em>m</em>:</p>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='451.21538461538466' height='118.90769230769229' viewBox='0 0 451.21538461538466 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>g</text><circle fill='#b3ffcf' stroke='black' cx='423.692' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='423.692' y='91.3846' font-size='18.0000'fill=black>m</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='203.577' y1='40.8784' x2='245.038' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='203.577,40.8784, 209.219,51.6272 215.167,44.4895' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='363.085' y1='40.8784' x2='404.546' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='363.085,40.8784, 368.727,51.6272 374.675,44.4895' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><line x1='368.862' y1='91.3846' x2='398.769' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='368.862,91.3846, 380.077,96.0302 380.077,86.7391' /></g></svg></div>
+<p>The contents of commit <em>m</em> are not uniquely defined. They are determined by the
+merge algorithm, and, in case of conflicts, by explicit user input.</p>
+<h3 id="MergeIntoKeepTarget">MergeIntoKeepTarget x y</h3>
+<p>Merges tip <em>x</em> into tip <em>y</em>, producing a new commit which has the same tree
+contents as <em>y</em>. For example, <em>MergeIntoKeepTarget e g</em> gives:</p>
+
+
+
+
+<div style="text-align: center"><svg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' width='451.21538461538466' height='118.90769230769229' viewBox='0 0 451.21538461538466 118.90769230769229' ><g transform='translate(1.3 1.3)' stroke-width='1.3'><circle fill='#b3dbff' stroke='black' cx='24.9231' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='24.9231' y='24.9231' font-size='18.0000'fill=black>a</text><circle fill='#b3dbff' stroke='black' cx='104.677' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='104.677' y='24.9231' font-size='18.0000'fill=black>b</text><circle fill='#b3dbff' stroke='black' cx='184.431' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='184.431' y='24.9231' font-size='18.0000'fill=black>c</text><circle fill='#b3dbff' stroke='black' cx='264.185' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='24.9231' font-size='18.0000'fill=black>d</text><circle fill='#b3dbff' stroke='black' cx='343.938' cy='24.9231' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='24.9231' font-size='18.0000'fill=black>e</text><circle fill='#b3ffcf' stroke='black' cx='264.185' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='264.185' y='91.3846' font-size='18.0000'fill=black>f</text><circle fill='#b3ffcf' stroke='black' cx='343.938' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='343.938' y='91.3846' font-size='18.0000'fill=black>g</text><circle fill='#b3ffcf' stroke='black' cx='423.692' cy='91.3846' r='24.9231' /><text text-anchor='middle' dominant-baseline='middle' x='423.692' y='91.3846' font-size='18.0000'fill=black>g'</text><line x1='49.8462' y1='24.9231' x2='79.7538' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='49.8462,24.9231, 61.0615,29.5686 61.0615,20.2775' /><line x1='129.600' y1='24.9231' x2='159.508' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='129.600,24.9231, 140.815,29.5686 140.815,20.2775' /><line x1='209.354' y1='24.9231' x2='239.262' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='209.354,24.9231, 220.569,29.5686 220.569,20.2775' /><line x1='203.577' y1='40.8784' x2='245.038' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='203.577,40.8784, 209.219,51.6272 215.167,44.4895' /><line x1='289.108' y1='24.9231' x2='319.015' y2='24.9231' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,24.9231, 300.323,29.5686 300.323,20.2775' /><line x1='363.085' y1='40.8784' x2='404.546' y2='75.4293' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='363.085,40.8784, 368.727,51.6272 374.675,44.4895' /><line x1='289.108' y1='91.3846' x2='319.015' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='289.108,91.3846, 300.323,96.0302 300.323,86.7391' /><line x1='368.862' y1='91.3846' x2='398.769' y2='91.3846' stroke='black' /><polygon fill='black' stroke='black' stroke-width='0.5' points='368.862,91.3846, 380.077,96.0302 380.077,86.7391' /></g></svg></div>
+<p>In terms of git commands this operation corresponds to <code>git merge -sours e</code>,
+assuming <em>g</em> is checked out before the merge.</p>
+<hr />
+<h4 id="1"></h4>
+<p>1. Note that the GitLab
+<a href="https://docs.gitlab.com/ee/development/diffs.html#merge-request-diffs-against-the-head-of-the-target-branch">documentation</a>,
+actually says that <em>the target branch is
+artificially merged into the source branch, then the resulting merge ref is
+compared to the source branch</em>, rather than the other way around. I believe
+this to be inaccurate since it contradicts both the
+<a href="https://blog.developer.atlassian.com/a-better-pull-request/">article</a> which
+inspired this feature, and my understanding of the GitLab code.</p>
+
+</div>
+
+
+
+<h2><a href="/posts">More posts...</a></h2>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

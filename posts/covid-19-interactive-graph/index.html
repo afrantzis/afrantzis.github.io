@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Interactive time series graph of confirmed COVID-19 cases per country</title>
+<meta name="description" content="Plotting an interactive time series graph of confirmed COVID-19 cases
+                 per country using the JHU data">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Interactive time series graph of confirmed COVID-19 cases per country
+    </h1>
+    <span class="post-date">
+        March  9, 2020
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;covid-19-interactive-graph&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I have been looking for more information about the trends of the number of
+confirmed COVID-19 cases per country. I could find the numbers for each day,
+but I wanted a visual representation of the information in order to readily
+compare the trends in various regions.</p>
+<p>John Hopkins University (JHU) has set up a great
+<a href="https://www.arcgis.com/apps/opsdashboard/index.html#/bda7594740fd40299423467b48e9ecf6">dashboard</a>
+tracking the COVID-19 cases worldwide. It contains a time series graph of the
+overall cases, but doesn't provide such graphs for each country.
+Thankfully, JHU have made all their data publicly available (for
+educational/academic purposes) in their <a href="https://github.com/CSSEGISandData/COVID-19">JHU CSSE COVID-19
+repository</a>.</p>
+<p>Since I couldn't find a visualization that matched my needs I decided
+to create my own interactive graph:</p>
+<p><a href="../../covid-19/">Interactive time series graph of confirmed COVID-19 cases per country</a></p>
+<p>The graph is implemented as a web page that uses client-side processing (i.e.,
+javascript) to plot the time series for one or more countries. The JHU
+data is fetched and processed by the client on each page load, so the graph
+will display the latest data without requiring any server-side updates.</p>
+<p>For example, this is a plot from that page for France, Italy and Spain as of
+2020-03-08:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain.png" alt="france-italy-spain" /></p>
+<p>Given the time offset between the trend lines, it's not always clear how the
+trends compare. To be able to compare trends more easily, I added an option to
+synchronize the displayed time series so that they start at (approximately) the
+same confirmed case count. Here is the same series as above but synchronized
+at 200 cases:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain-sync-200.png" alt="france-italy-spain-sync-200" /></p>
+<p>This plot indicates that France and Italy are following roughly the same trend,
+whereas Spain is faring a bit better.</p>
+<p>Before you draw any conclusions about trends that show up after
+synchronization, keep in mind two important caveats.</p>
+<p>First, since our sampling granularity is one day, and jumps in confirmed cases
+between successive days can be large, starting points for each series after
+synchronization may in fact be different enough to skew results. For example,
+we may want to synchronize at around 200, but if one series jumps from 50 to
+300, the starting point for that series is not going to be near 200.</p>
+<p>Second, using different synchronization points may provide different views of
+the trends. The same France-Italy-Spain plot synchronized at 40 cases gives:</p>
+<p><img src="https://afrantzis.com/posts/covid-19-interactive-graph/france-italy-spain-sync-40.png" alt="france-italy-spain-sync-40" /></p>
+<p>In this plot we can see that France and Spain initially followed a similar
+trend, but then France started diverging upwards. This is somewhat apparent in
+the original, non-synchronized plot, but only because the France and Spain
+trend lines have a small time offset.</p>
+<p>I hope people find this interactive graph informative!</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

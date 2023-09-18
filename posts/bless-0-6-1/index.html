@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Bless Hex Editor 0.6.1</title>
+<meta name="description" content="A much delayed update to the Bless Hex Editor">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Bless Hex Editor 0.6.1
+    </h1>
+    <span class="post-date">
+        September 19, 2018
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;bless-0-6-1&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A long time ago, on a computer far, far away... well, actually, 14 years ago,
+on a computer that is still around somewhere in the basement, I wrote the first
+lines of source code for what would become the Bless hex editor.</p>
+<p>For my initial experiments I used C++ with the gtkmm bindings, but C++
+compilation times were so appallingly slow on my feeble computer, that I
+decided to give the relatively young <a href="https://www.mono-project.com">Mono</a>
+framework a try. The development experience was much better, so I continued
+with Mono and Gtk#. For revision control, I started out with
+<a href="https://en.wikipedia.org/wiki/GNU_arch">tla</a> (remember that?), but eventually
+settled on bzr.</p>
+<p>Development continued at a steady pace until 2009, when life's responsibilities
+got in the way, and left me with little time to work on the project. A few
+attempts were made by other people to revive Bless after that, but,
+unfortunately, they also seem to have stagnated.  The project had been inactive
+for almost 8 years when the gna.org hosting site closed down in 2017 and pulled
+the official Bless page and bzr repository with it into the abyss. </p>
+<p>Despite the lack of development and maintenance, Bless remained surprisingly
+functional through the years. I, and many others it seems, have kept using it,
+and, naturally, a few bugs have been uncovered during this time.</p>
+<p>I recently found some time to bring the project back to life, although, I
+should warn, this does not imply any intention to resume feature development on
+it. My free time is still scarce, so the best I can do is try to maintain it
+and accept contributions. The project's new official home is at
+<a href="https://github.com/afrantzis/bless">https://github.com/afrantzis/bless</a>.</p>
+<p>To mark the start of this new era, I have released <a href="https://github.com/afrantzis/bless/releases">Bless
+0.6.1</a>, containing fixes for many
+of the major issues I could find reports for. Enjoy!</p>
+<p><strong>Important Note</strong>: There seems to be a bug in some versions of Mono that
+manifests as a crash when selecting bytes. The backtrace looks like:</p>
+<pre class="z-code"><code><span class="z-text z-plain">free(): invalid pointer
+Stacktrace:
+
+  at &lt;unknown&gt; &lt;0xffffffff&gt;
+  at (wrapper managed-to-native) GLib.SList.g_free (intptr) &lt;0x0005f&gt;
+  at GLib.ListBase.Empty () &lt;0x0013c&gt;
+  at GLib.ListBase.Dispose (bool) &lt;0x0000f&gt;
+  at GLib.ListBase.Finalize () &lt;0x0001d&gt;
+  at (wrapper runtime-invoke) object.runtime_invoke_virtual_void__this__ (object,intptr,intptr,intptr) &lt;0x00068&gt;
+</span></code></pre>
+<p>Searching for this backtrace you can find various reports of other Mono
+programs also affected by this bug. At the time of writing, the mono packages
+in Debian and Ubuntu (4.6.2) exhibit this problem. If you are affected, the
+solution is to update to a newer version of Mono, e.g., from
+<a href="https://www.mono-project.com/download/stable/">https://www.mono-project.com/download/stable/</a>.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

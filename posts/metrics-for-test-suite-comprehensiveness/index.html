@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Metrics for test suite comprehensiveness</title>
+<meta name="description" content="Introducing some metrics for test suite comprehensiveness
+                 and using them on Free and Open Source (FOSS) codebases">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Metrics for test suite comprehensiveness
+    </h1>
+    <span class="post-date">
+        November  3, 2018
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;metrics-for-test-suite-comprehensiveness&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>In a previous
+<a href="https://afrantzis.com/posts/on-the-low-adoption-of-automated-testing-in-foss/">post</a> I discussed
+a few FOSS specific mentalities and practices that I believe play a role in
+discouraging adoption of comprehensive automated testing in FOSS. One of the
+points that came up in discussions, is whether the basic premise of the post,
+that FOSS projects don't typically employ <em>comprehensive</em> automated testing,
+including not having any tests at all, is actually true. That's a valid
+concern, given that the post was motivated by my long-term observations working
+on and with FOSS and didn't provide any further data. In this post will try to
+address this concern.</p>
+<p>The main question is how we can measure the comprehensiveness of a test suite.
+Code coverage is the standard metric used in the industry and makes intuitive
+sense. However, it presents some difficulties for large scale surveys, since
+it's not computationally cheap to produce and often requires per project
+changes or arrangements.</p>
+<p>I would like to propose and explore two alternative metrics that are easier to
+produce, and are therefore better suited to large scale surveys.</p>
+<p>The first metric is the <strong>test commit ratio</strong> of the codebase — the number of
+commits that affect test code as a percentage of all commits. Ideally, every
+change that adds a feature or fixes a bug in the production code should be
+accompanied by a corresponding change in the test code. The more we depart from
+this ideal, and, hence, the less often we update the test code, the less
+comprehensive our test suite tends to be. This metric is affected by the
+project's particular commit practices, so some amount of variance is expected
+even between projects considered to be well tested.</p>
+<p>The second metric is the <strong>test code size ratio</strong> of the codebase — the size of
+the test code as a percentage of the size of all the code. It makes sense
+intuitively that, typically, more test code will be able to test more
+production code. That being said, the size itself does not provide the whole
+picture. Depending on the project, a compact test suite may be adequately
+comprehensive, or, conversely, large test data files may skew this metric.</p>
+<p>Neither of these metrics is failproof, but my hypothesis is that when combined
+and aggregated over many projects they can provide a good indication about the
+overall trend of the comprehensiveness of test suites, which is the main goal
+of this post.</p>
+<p>Let's see what these metrics give us for FOSS projects. I chose two software
+suites that are considered quite prominent in the FOSS world, namely GNOME and
+KDE, which together consist of over 1500 projects.</p>
+<p>A small number of these projects are not good candidates for this survey,
+because, for example, they are empty, or are pure documentation. Although they
+are included in the survey, their count is low enough to not affect the overall
+trend reported below.</p>
+<p>Here is the distribution of the percentages of commits affecting test code in
+GNOME and KDE projects:</p>
+<p><img src="https://afrantzis.com/posts/metrics-for-test-suite-comprehensiveness/kde-gnome-commits.svg" alt="kde-gnome-commits" /></p>
+<p>Here is the distribution of the percentages of test code size in GNOME and
+KDE projects:</p>
+<p><img src="https://afrantzis.com/posts/metrics-for-test-suite-comprehensiveness/kde-gnome-sizes.svg" alt="kde-gnome-sizes" /></p>
+<p>The first thing to notice is the tall lines in the left part of both graphs.
+For the second graph this shows that a very large percentage of the projects,
+roughly 55%, have either no tests at all, or so few as to be practically
+non-existent. Another interesting observation is the position of the 80%
+percentile lines, which show that 80% of the projects have test commit ratios
+less than 11.2%, and test code size ratios less than 8.8%.</p>
+<p>In other words, out of ten commits that change the code base, only about one
+(or fewer) touches the tests in the majority of the projects. Although this
+doesn't constitute indisputable proof that tests are not comprehensive, it is
+nevertheless a big red flag, especially when combined with low test code size
+percentages. Each project may have different needs and development patterns,
+and these numbers need to be interpreted with care, but as a general trend this
+is not encouraging.</p>
+<p>On the bright side, there are some projects with higher values in this
+distribution. It's no surprise that this set consists mainly of core libraries
+from these software suites, but does not include many end-user applications.</p>
+<p>Going off on a slight tangent, one may argue that the distribution is unfairly
+skewed since many of these projects are GUI applications which, according to
+conventional wisdom, are not easy to test. However, this argument fails on
+multiple fronts. First, it's not unfair to include these programs, because we
+expect no less of them in terms of quality compared to other types of programs.
+They don't get a free pass because they have a GUI. In addition, being a GUI
+program is not a valid excuse for inadequate testing, because although testing
+the UI itself, or the functionality through the UI, may not be easy, there is
+typically a lot more we <em>can</em> test. Programs provide some core domain
+functionality, which we should be able to test independently if we decouple our
+core domain logic from the UI, often by using a different architecture, for
+example, the <a href="https://web.archive.org/web/20170506170237/http://alistair.cockburn.us/Hexagonal+architecture">Hexagonal
+Architecture</a>.</p>
+<p>After having seen some general trends, let's see some examples of individual
+codebases that do better in these metrics:</p>
+<p><img src="https://afrantzis.com/posts/metrics-for-test-suite-comprehensiveness/misc-test-stats.svg" alt="misc-test-stats" /></p>
+<p>This graph displays quite a diverse collection of projects including a
+database, graphics libraries, a GUI toolkit, a display compositor, system tools
+and even a GUI application. These projects are considered to be relatively well
+tested, each in its own particular way, so these higher numbers provide some
+evidence that the metrics correlate with test comprehensiveness.</p>
+<p>If we accept this correlation, this collection also shows that we can achieve
+more comprehensive testing in a wide variety of projects. Depending on project,
+the trade-offs we need to make will differ, but it is almost always possible to
+do well in this area.</p>
+<p>The interpretation of individual results varies with the project, but, in
+general, I have found that the test commit ratio is typically a more reliable
+indicator of test comprehensiveness, since it's less sensitive to test
+specifics compared to test code size ratio.</p>
+<h2 id="tools-and-data">Tools and Data</h2>
+<p>In order to produce the data, I developed the
+<a href="https://github.com/afrantzis/git-test-annotate">git-test-annotate</a> program
+which produces a list of files and commits from a git repository and marks them
+as related to testing or not.</p>
+<p>git-test-annotate decides whether a file is a test file by checking for the
+string &quot;test&quot; anywhere in the file's path within the repository. This is a very
+simple heurestic, but works surprisingly well. In order to make test code size
+calculation more meaningful, the tool ignores files that are not typically
+considered testable sources, for example, non-text files and translations, both
+in the production and the test code.</p>
+<p>For commit annotations, only mainline commits are taken into account, To check
+if a commit affects the tests the tool checks if it changes at least one file
+with &quot;test&quot; in its path.</p>
+<p>To get the stats for KDE and GNOME I downloaded all their projects from their
+github organizations/mirrors and ran the git-test-annotate tool on each
+project. All the annotated data and a python script to process them are
+available in the
+<a href="https://github.com/afrantzis/foss-test-annotations">foss-test-annotations</a>
+repository.</p>
+<h2 id="epilogue">Epilogue</h2>
+<p>I hope this post has provided some useful information about the utility of the
+proposed metrics, and some evidence that there is ample room for improvement in
+automated testing of FOSS projects. It would certainly be interesting to
+perform a more rigorous investigation to evaluate how well these metrics
+correlate with code coverage.</p>
+<p>Before closing, I would like to mention that there are cases where projects are
+primarily tested through external test suites. Examples in the FOSS world are
+the piglit suite for Mesa, and various tests suites for the Linux kernel. In
+such cases, project test comprehensiveness metrics don't provide the complete
+picture, since they don't take into account the external tests. These metrics
+are still useful though, because external suites typically perform functional
+or conformance testing only, and the metrics can provide information about
+internal testing, for example unit testing, done within the projects
+themselves.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

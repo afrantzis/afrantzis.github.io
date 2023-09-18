@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - C vs C++11: C++ goes to eleven!</title>
+<meta name="description" content="A look at C++11&#x27;s out-of-the-box performance using a simple word counting program as an example.">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         C vs C++11: C++ goes to eleven!
+    </h1>
+    <span class="post-date">
+        September 17, 2012
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;c-vs-cpp11-cpp-goes-to-eleven&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>One of the top web results when searching for &quot;C vs C++&quot; is Jakob Østergaard's
+<a href="http://unthought.net/c++/c_vs_c++.html">article</a> of the same name. In his
+article, Jakob presents the challenge of writing a program that counts the
+unique words in a text file, and tries out various versions he got or created
+himself. Although Jakob's text can't really be considered a comprehensive
+comparison of C vs C++, it does provide some insight into how powerful C++ can
+be &quot;out of the box&quot;.</p>
+<p>The original C++ implementation given by Jakob is:</p>
+<pre data-lang="cpp" class="language-cpp z-code"><code class="language-cpp" data-lang="cpp"><span class="z-source z-c++"><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>set<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>string<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>iostream<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span>
+<span class="z-storage z-type z-c">int</span> <span class="z-meta z-function z-c++"><span class="z-meta z-toc-list z-full-identifier z-c++"><span class="z-entity z-name z-function z-c++">main</span></span></span><span class="z-meta z-function z-parameters z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-function z-parameters z-c++"><span class="z-meta z-group z-c++"><span class="z-storage z-type z-c">int</span> <span class="z-variable z-parameter z-c++">argc</span><span class="z-punctuation z-separator z-c++">,</span> <span class="z-storage z-type z-c">char</span> <span class="z-keyword z-operator z-c">*</span><span class="z-keyword z-operator z-c">*</span><span class="z-variable z-parameter z-c++">argv</span><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span><span class="z-meta z-function z-c++">
+</span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++"><span class="z-punctuation z-section z-block z-begin z-c++">{</span></span></span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++">
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Declare and Initialize some variables
+</span>    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>string word<span class="z-punctuation z-terminator z-c++">;</span>
+    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>set<span class="z-punctuation z-section z-generic z-begin z-c++">&lt;</span>std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>string<span class="z-punctuation z-section z-generic z-end z-c++">&gt;</span> wordcount<span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Read words and insert in set
+</span>    <span class="z-keyword z-control z-c++">while</span> <span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span>std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>cin <span class="z-keyword z-operator z-arithmetic z-c">&gt;&gt;</span> word<span class="z-punctuation z-section z-group z-end z-c++">)</span></span> wordcount<span class="z-punctuation z-accessor z-dot z-c++">.</span><span class="z-meta z-method-call z-c++"><span class="z-variable z-function z-member z-c++">insert</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++">word</span></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span><span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Print the result
+</span>    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>cout <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> <span class="z-string z-quoted z-double z-c"><span class="z-punctuation z-definition z-string z-begin z-c">&quot;</span>Words: <span class="z-punctuation z-definition z-string z-end z-c">&quot;</span></span> <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> wordcount<span class="z-punctuation z-accessor z-dot z-c++">.</span><span class="z-meta z-method-call z-c++"><span class="z-variable z-function z-member z-c++">size</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-method-call z-c++"></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span> <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>endl<span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-keyword z-control z-flow z-return z-c++">return</span> <span class="z-constant z-numeric z-integer z-decimal z-c++">0</span><span class="z-punctuation z-terminator z-c++">;</span>
+</span></span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++"><span class="z-punctuation z-section z-block z-end z-c++">}</span></span></span>
+</span></code></pre>
+<p>Unfortunately, the concise and highly readable solution presented above leaves
+a lot to be desired on the performance front. So, I set out to improve it,
+trying to also take advantage of any relevant C++11 features. My updated C++11
+version is:</p>
+<pre data-lang="cpp" class="language-cpp z-code"><code class="language-cpp" data-lang="cpp"><span class="z-source z-c++"><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>unordered_set<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>string<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span><span class="z-meta z-preprocessor z-include z-c++"><span class="z-keyword z-control z-import z-include z-c++">#include</span> <span class="z-string z-quoted z-other z-lt-gt z-include z-c++"><span class="z-punctuation z-definition z-string z-begin z-c++">&lt;</span>iostream<span class="z-punctuation z-definition z-string z-end z-c++">&gt;</span></span>
+</span>
+<span class="z-storage z-type z-c">int</span> <span class="z-meta z-function z-c++"><span class="z-meta z-toc-list z-full-identifier z-c++"><span class="z-entity z-name z-function z-c++">main</span></span></span><span class="z-meta z-function z-parameters z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-function z-parameters z-c++"><span class="z-meta z-group z-c++"><span class="z-storage z-type z-c">int</span> <span class="z-variable z-parameter z-c++">argc</span><span class="z-punctuation z-separator z-c++">,</span> <span class="z-storage z-type z-c">char</span> <span class="z-keyword z-operator z-c">*</span><span class="z-keyword z-operator z-c">*</span><span class="z-variable z-parameter z-c++">argv</span><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span><span class="z-meta z-function z-c++">
+</span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++"><span class="z-punctuation z-section z-block z-begin z-c++">{</span></span></span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++">
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Declare and Initialize some variables
+</span>    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>string word<span class="z-punctuation z-terminator z-c++">;</span>
+    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>unordered_set<span class="z-punctuation z-section z-generic z-begin z-c++">&lt;</span>std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>string<span class="z-punctuation z-section z-generic z-end z-c++">&gt;</span> wordcount<span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-meta z-function-call z-c++">std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>ios_base<span class="z-punctuation z-accessor z-double-colon z-c++">::</span><span class="z-variable z-function z-c++">sync_with_stdio</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-function-call z-c++"><span class="z-meta z-group z-c++"><span class="z-constant z-language z-c">false</span></span></span><span class="z-meta z-function-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span><span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Read words and insert in unordered_set
+</span>    <span class="z-keyword z-control z-c++">while</span> <span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span>std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>cin <span class="z-keyword z-operator z-arithmetic z-c">&gt;&gt;</span> word<span class="z-punctuation z-section z-group z-end z-c++">)</span></span> wordcount<span class="z-punctuation z-accessor z-dot z-c++">.</span><span class="z-meta z-method-call z-c++"><span class="z-variable z-function z-member z-c++">insert</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++"><span class="z-meta z-function-call z-c++">std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span><span class="z-variable z-function z-c++">move</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-function-call z-c++"><span class="z-meta z-group z-c++">word</span></span><span class="z-meta z-function-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span></span></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span><span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-comment z-line z-double-slash z-c"><span class="z-punctuation z-definition z-comment z-c">//</span> Print the result
+</span>    std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>cout <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> <span class="z-string z-quoted z-double z-c"><span class="z-punctuation z-definition z-string z-begin z-c">&quot;</span>Words: <span class="z-punctuation z-definition z-string z-end z-c">&quot;</span></span> <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> wordcount<span class="z-punctuation z-accessor z-dot z-c++">.</span><span class="z-meta z-method-call z-c++"><span class="z-variable z-function z-member z-c++">size</span><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-begin z-c++">(</span></span></span><span class="z-meta z-method-call z-c++"></span><span class="z-meta z-method-call z-c++"><span class="z-meta z-group z-c++"><span class="z-punctuation z-section z-group z-end z-c++">)</span></span></span> <span class="z-keyword z-operator z-arithmetic z-c">&lt;&lt;</span> std<span class="z-punctuation z-accessor z-double-colon z-c++">::</span>endl<span class="z-punctuation z-terminator z-c++">;</span>
+    <span class="z-keyword z-control z-flow z-return z-c++">return</span> <span class="z-constant z-numeric z-integer z-decimal z-c++">0</span><span class="z-punctuation z-terminator z-c++">;</span>
+</span></span><span class="z-meta z-function z-c++"><span class="z-meta z-block z-c++"><span class="z-punctuation z-section z-block z-end z-c++">}</span></span></span>
+</span></code></pre>
+<p>There are three changes in the new code. The first change is using the new
+C++11 std::unordered_set container instead of std::set. Internally,
+unordered_set uses a hash table instead of balanced tree, losing support for
+item ordering, but gaining significantly in average performance.</p>
+<p>The second change is actually an old C++ option, not particular to C++11:
+disabling stdio synchronization. This is a big performance booster for
+intensive I/O. It is highly recommended to turn synchronization off, unless you
+really, <strong>really</strong> need to use the C and C++ standard streams at the same time.</p>
+<p>The third change is explicitly taking advantage of C++11 move semantics
+(std::move()). In my benchmarks the change didn't have a noticable impact,
+perhaps because the compiler was eliding the copy anyway, or because the
+strings were small enough that a copy and a move weren't significantly
+different in performance.</p>
+<p>To test the different versions, I created a series of word files containing 4
+million words each, each one consisting of a different number of unique words.
+The tested versions include all the versions from Jakob's article, plus the new
+cpp4, c2, and python versions.</p>
+<table><thead><tr><th>Name</th><th>Description</th><th>SLOC</th></tr></thead><tbody>
+<tr><td>cpp1</td><td>Original C++ version</td><td>11</td></tr>
+<tr><td>cpp1-fixed</td><td>“Fixed” C++ version (using scanf)</td><td>12</td></tr>
+<tr><td>cpp2</td><td>C++ version of c1</td><td>100</td></tr>
+<tr><td>cpp3</td><td>Jakob’s Ego-booster</td><td>83</td></tr>
+<tr><td>cpp4</td><td>C++11 version</td><td>12</td></tr>
+<tr><td>c1</td><td>C hash</td><td>71</td></tr>
+<tr><td>c2</td><td>Glib hash</td><td>12</td></tr>
+<tr><td>py</td><td>Python</td><td>5</td></tr>
+</tbody></table>
+<p>Here are the run time results:</p>
+<p><img src="https://afrantzis.com/posts/c-vs-cpp11-cpp-goes-to-eleven/cvscpp-time-results.png" alt="cvscpp-time-results" /></p>
+<p>Here are the results for the maximum RSS:</p>
+<p><img src="https://afrantzis.com/posts/c-vs-cpp11-cpp-goes-to-eleven/cvscpp-mem-results.png" alt="cvscpp-mem-results" /></p>
+<p>The updated C++11 version (cpp4) is about 5 times (!) faster than the original,
+partly because of using unordered_set, and partly because of not synchronizing
+with stdio. The memory usage has decreased by a decent amount, too! For lower
+numbers of unique words the performance results are somewhat mixed, but, as the
+number of unique words grows, the C++11 and Glib versions become clear winners.
+C++ goes to 11, indeed!</p>
+<p>Based on the results above, here are some tips:</p>
+<ul>
+<li>
+<p>Rolling your own implementation is probably not worth it.</p>
+</li>
+<li>
+<p>In C++11, when you don't need item ordering, you are probably better off
+using the unordered variants of the containers (but don't forget to
+benchmark).</p>
+</li>
+<li>
+<p>If you use standard streams, and don't need to be in sync with stdio
+streams, be sure to turn synchronization off. If you need to be in sync,
+try hard to stop needing it!</p>
+</li>
+<li>
+<p>If you just want to quickly create something having decent performance,
+consider using python.</p>
+</li>
+</ul>
+<p>You can find the code and scripts used for benchmarking
+<a href="https://code.launchpad.net/~afrantzis/+junk/cvscpp/">here</a>. To create the
+sample text files ('make texts') you need to have an extracted copy of
+<a href="http://wordlist.aspell.net/">scowl</a> in the project directory.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

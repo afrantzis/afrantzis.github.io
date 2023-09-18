@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Running Chromium with Ozone-GBM on a GNU&#x2F;Linux desktop system</title>
+<meta name="description" content="A guide describing how to run Chromium on DRM&#x2F;KMS on a normal GNU&#x2F;Linux desktop">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Running Chromium with Ozone-GBM on a GNU&#x2F;Linux desktop system
+    </h1>
+    <span class="post-date">
+        November 24, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;running-chromium-with-ozone-gbm-on-a-gnu-linux-desktop-system&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p><a href="https://chromium.googlesource.com/chromium/src/+/lkcr/docs/ozone_overview.md">Ozone</a>
+is Chromium's next-gen platform abstraction layer for graphics and input.  When
+developing either Ozone itself or an application that uses Ozone, it is often
+beneficial to be able to run the code on the development machine, which is
+usually a typical GNU/Linux desktop system, since doing so speeds up the
+development cycle.</p>
+<p>The X11 backend for Ozone works without much trouble on a Linux desktop system.
+However, getting the DRM/GBM backend to run on such a system, which I recently
+needed to do as part of my work at <a href="https://www.collabora.com/">Collabora</a>,
+turned out to be significantly less straightforward. In this guide I will
+describe all the steps that are required to run Chromium with Ozone-GBM on a
+typical GNU/Linux desktop system.</p>
+<h2 id="building-chromium">Building Chromium</h2>
+<p>The Chromium developer documentation provides detailed <a href="https://chromium.googlesource.com/chromium/src/+/master/docs/linux_build_instructions.md">build instructions for
+Linux</a>.
+For this guide, we have to ensure that we enable Ozone and that the target OS
+for the build is &quot;chromeos&quot;:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> gn gen out/OzoneChromeOS</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> gn args<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>args</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span><span class="z-string z-quoted z-single z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&#39;</span>use_ozone=true target_os=&quot;chromeos&quot;<span class="z-punctuation z-definition z-string z-end z-shell">&#39;</span></span> out/OzoneChromeOS</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ninja<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>C</span> out/OzoneChromeOS chrome</span>
+</span></code></pre>
+<h2 id="building-a-functional-minigbm">Building a functional minigbm</h2>
+<p>Ozone-GBM uses the GBM API to create buffers. However, it doesn't use Mesa's
+GBM implementation, but ships its own in the form of the minigbm library. The
+Chromium source code contains a copy of the library under third_party, but uses
+it only for building and testing purposes without enabling any of the minigbm
+hardware drivers.</p>
+<p>In order to run Ozone-GBM on real hardware we need to create a build of minigbm
+that supports our target GPU. For the purposes of this guide, the simplest way
+to provide a functional minigbm is to build it independently and provide it at
+runtime to Chromium using LD_LIBRARY_PATH.</p>
+<p>First we need to get the minigbm source code with:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> git clone https://chromium.googlesource.com/chromiumos/platform/minigbm</span>
+</span></code></pre>
+<p>minigbm depends on libdrm, so we have to ensure that we have the development
+files for the libdrm library and the vendor specific extensions. On a
+Debian/Ubuntu system we can get everything we need by installing the libdrm-dev
+package:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> sudo apt install libdrm-dev</span>
+</span></code></pre>
+<p>We can now build minigbm with the correct flags to ensure the proper GPU driver is supported:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> make CPPFLAGS=<span class="z-string z-quoted z-double z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&quot;</span>-DDRV_I915<span class="z-punctuation z-definition z-string z-end z-shell">&quot;</span></span> DRV_I915=1</span>
+</span></code></pre>
+<p>Note that we need to provide the driver flag both as a preprocessor definition and a Make variable. Other driver flags for common desktop GPUs are DRV_RADEON and DRV_AMDGPU (but see below for amdgpu).</p>
+<p>Finally we need to create a link with the proper file name so that chrome can find the library:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ln<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>s</span> libminigbm.so.1.0.0 libminigbm.so</span>
+</span></code></pre>
+<h2 id="building-minigbm-with-amdgpu-support">Building minigbm with amdgpu support</h2>
+<p>The amdgpu driver for minigbm depends on the elusive amdgpuaddr library. This
+library is part of mesa, but it's not installed, and thus not provided in any
+package on most distributions.</p>
+<p>To get it we need to build Mesa ourselves and extract it from the built
+objects. An easy way to get all the dependencies and build Mesa with all the
+required flags is to use the distribution's build method. On a Debian/Ubuntu
+system this translates to a command sequence like:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> sudo apt build-dep mesa</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> apt source mesa</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> cd <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>mesa<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span></span> <span class="z-keyword z-operator z-logical z-and z-shell">&amp;&amp;</span> <span class="z-variable z-other z-readwrite z-assignment z-shell">DEB_BUILD_OPTIONS</span><span class="z-keyword z-operator z-assignment z-shell">=</span><span class="z-string z-unquoted z-shell"><span class="z-string z-quoted z-double z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&quot;</span>parallel=<span class="z-meta z-group z-expansion z-command z-parens z-shell"><span class="z-punctuation z-definition z-variable z-shell">$</span><span class="z-punctuation z-section z-parens z-begin z-shell">(</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">nproc</span></span><span class="z-punctuation z-section z-parens z-end z-shell">)</span></span><span class="z-punctuation z-definition z-string z-end z-shell">&quot;</span></span></span> <span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">debian/rules</span></span><span class="z-meta z-function-call z-arguments z-shell"> build</span>
+</span></code></pre>
+<p>After the build is done, we have to copy (and rename) the addrlib library and the required headers to the minigbm directory:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> cp <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>mesa<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span>/build/src/amd/addrlib/.libs/libamdgpu_addrlib.a <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>minigbm<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span>/libamdgpuaddr.a</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> cp <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>mesa<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span>/src/amd/addrlib/<span class="z-keyword z-operator z-regexp z-quantifier z-shell">*</span>.h <span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>minigbm<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span></span>
+</span></code></pre>
+<p>Finally, we are able build minigbm with amdgpu support with:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> make CPPFLAGS=<span class="z-string z-quoted z-double z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&quot;</span>-DDRV_AMDGPU<span class="z-punctuation z-definition z-string z-end z-shell">&quot;</span></span> DRV_AMDGPU=1 LDFLAGS=<span class="z-string z-quoted z-double z-shell"><span class="z-punctuation z-definition z-string z-begin z-shell">&quot;</span>-L.<span class="z-punctuation z-definition z-string z-end z-shell">&quot;</span></span></span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> ln<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>s</span> libminigbm.so.1.0.0 libminigbm.so</span>
+</span></code></pre>
+<h2 id="running-chromium">Running Chromium</h2>
+<p>We are almost there, but one last detail remains. If we try to run Chromium we
+will get an error message informing us that EGL initialization failed. The
+reason is that, when using Ozone-GBM, the EGLDisplay is created using
+EGL_DEFAULT_DISPLAY as the native display argument, under the assumption that
+the EGL implementation knows to interpret this as a request for a so-called
+surfaceless platform. However, Mesa doesn't recognize this hint. We need to
+explicitly tell Mesa to use the surfaceless platform with the EGL_PLATFORM
+environment variable.</p>
+<p>The following command line brings all the pieces of the puzzle together,
+allowing us to run Chromium with Ozone-GBM on a typical GNU/Linux desktop:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> sudo LD_LIBRARY_PATH=<span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>minigbm<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span> EGL_PLATFORM=surfaceless out/OzoneChromeOS/chrome<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>ozone-platform</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span>gbm<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>no-sandbox</span><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>mash</span></span>
+</span></code></pre>
+<p><strong>[Update March 2018]</strong></p>
+<p>To run Chromium on a typical GNU/Linux desktop we must now use the following command:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">$</span></span><span class="z-meta z-function-call z-arguments z-shell"> sudo LD_LIBRARY_PATH=<span class="z-keyword z-control z-regexp z-set z-begin z-shell">[</span>minigbm<span class="z-keyword z-operator z-word z-shell">-</span>dir<span class="z-keyword z-control z-regexp z-set z-end z-shell">]</span> EGL_PLATFORM=surfaceless out/OzoneChromeOS/chrome<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>ozone-platform</span><span class="z-keyword z-operator z-assignment z-option z-shell">=</span>gbm<span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>no-sandbox</span><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> --</span>force-system-compositor-mode</span></span>
+</span></code></pre>
+<p>Enjoy!</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

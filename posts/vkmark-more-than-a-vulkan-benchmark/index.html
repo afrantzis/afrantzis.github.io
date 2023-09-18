@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - vkmark: More than a Vulkan benchmark</title>
+<meta name="description" content="Announcing the vkmark Vulkan benchmark">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         vkmark: More than a Vulkan benchmark
+    </h1>
+    <span class="post-date">
+        July 12, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;vkmark-more-than-a-vulkan-benchmark&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>Ever since <a href="https://www.khronos.org/vulkan/">Vulkan</a> was announced a few years
+ago, the idea of creating a Vulkan benchmarking tool in the spirit of
+<a href="https://github.com/glmark2/glmark2">glmark2</a> had been floating in my mind.
+Recently, thanks to my employer, <a href="https://www.collabora.com/">Collabora</a>, this
+idea has materialized! The result is the vkmark Vulkan benchmark, hosted on
+github:</p>
+<p><a href="https://github.com/vkmark/vkmark">https://github.com/vkmark/vkmark</a></p>
+<p>Like its glmark2 sibling project, vkmark's goals are different from the goals
+of big, monolithic and usually proprietary benchmarks. Instead of providing a
+single, complex benchmark, vkmark aims to provide an extensible suite of
+targeted, configurable benchmarking scenes. Most scenes exercise specific
+Vulkan features or usage patterns (e.g., desktop 2.5D scenarios), although we
+are also happy to have more complex, visually intriguing scenes.</p>
+<p>Benchmarking scenes can be configured with options that affect various aspects
+of their rendering. We hope that the ease with which developers can use
+different options will make it painless to perform targeted tests and
+eventually provide best practices advice.</p>
+<p>A few years ago we were pleasantly surprised to learn that developers were
+using glmark2 as a testing tool for driver development, especially in free (as
+in freedom) software projects. This is a goal that we want to actively pursue
+for vkmark, too. The flexible benchmarking approach is a natural fit for this
+kind of development; the developer can start with getting the simple scenes
+working and then, as the driver matures, move to scenes that use more advanced
+features. vkmark has already proved useful in this regard, being an valuable
+testing aid for my own experiments in the Mesa Vulkan WSI implementation.</p>
+<p>With vkmark we also want to be on the cutting edge of software development
+practices and tools. vkmark is a modern, C++14 codebase, using the
+<a href="https://github.com/KhronosGroup/Vulkan-Hpp">vulkan-hpp</a> bindings, the
+<a href="http://mesonbuild.com/">Meson</a> build system and the
+<a href="https://github.com/philsquared/Catch">Catch</a> test framework. To ensure a high
+quality codebase, the core of vkmark is developed using test-driven
+development.</p>
+<p>It is still early days, but vkmark already has support for X11, Wayland and
+DRM/KMS, and provides two simple scenes: a &quot;clear&quot; scene, and a &quot;cube&quot; scene
+that renders a simple colored cube based on the
+<a href="https://github.com/krh/vkcube">vkcube</a> example (which is itself based on
+<a href="https://github.com/robclark/kmscube">kmscube</a>). The future looks bright!</p>
+<p>We are looking forward to getting more feedback on vkmark and, of course,
+contributions are always welcome!</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

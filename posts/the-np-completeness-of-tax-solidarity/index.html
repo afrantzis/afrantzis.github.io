@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - The NP-Completeness of tax solidarity</title>
+<meta name="description" content="Solving the partition problem to fairly distribute shared
+                 receipts among friends">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         The NP-Completeness of tax solidarity
+    </h1>
+    <span class="post-date">
+        September 30, 2010
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;the-np-completeness-of-tax-solidarity&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>At last, it's Friday! After a long week of hard work you deserve some time to
+relax and meet for a drink with friends. You make a few phone calls, everything
+is arranged and a few hours later you are out having a great time. And then the
+time comes to pay for the drinks. If you are lucky, there is a separate receipt
+for every drink  If you are not lucky (and you usually aren't), there is one
+receipt for all the drinks. Now you have to spend the next five minutes trying
+to decide who gets the receipt.</p>
+<p>Why all the fuss about receipts, you may ask? If you live in Greece (and
+perhaps other places) in this time of economic woe, then this scenario is all
+too familiar. The Greek government, in its never-ending battle with tax evasion
+has come up with a plan! Every citizen must present an amount in receipts which
+depends on their income (using a tiered system). Any difference from the
+required amount (up to 15000 €) leads to either a penalty or credit equal to
+10% of the difference. Note, that you can't present receipts that are used in
+some other way to lower your taxable income (rent, utilities etc).</p>
+<p>The main idea is to make citizens ask for receipts, so that businesses are
+forced to issue them. The secondary idea is to make citizens spend more. So
+much for savings...</p>
+<p>In any case, near the end of the year, everyone in your group of close friends
+(the ones you go out with more often) ends up with a bunch of receipts. Some
+have enough receipts to cover their limit, some do not.  Furthermore, some of
+the receipts are shared, in the sense that the one who has the receipt has paid
+for only some of the items on it.  Being such good friends you decide that you
+should help each other out, so that, if possible, everyone reaches their limit
+and saves money.  Practical tax solidarity</p>
+<p>There are several practical ways to help each other and they all share a common
+core.  The receipts of each individual are first split into a private and
+public part.  Each individual keeps their private part and the public part is
+split among the individuals that need it. By combining different ways to decide
+what receipts are public and private and how to split the public ones we can
+get several methods to help our friends. Some interesting methods are:</p>
+<table><thead><tr><th>#</th><th>private</th><th>public</th><th>split method</th></tr></thead><tbody>
+<tr><td>1</td><td>nothing</td><td>all</td><td>equally among all</td></tr>
+<tr><td>2</td><td>all until limit</td><td>the rest</td><td>among those that need it until limit, rest back to owners or equally among all</td></tr>
+<tr><td>3</td><td>all until limit + 15000€</td><td>the rest</td><td>among those that need it until limit, rest back to owners or equally among all</td></tr>
+<tr><td>4</td><td>non-shared</td><td>shared</td><td>equally among all</td></tr>
+<tr><td>5</td><td>non-shared + shared until limit</td><td>rest</td><td>equally among all</td></tr>
+</tbody></table>
+<p>If you are really good friends and the spirit of solidarity is high within the
+group, you may decide to try to split the receipts as evenly as possible within
+the group (method 1). This method maximizes the collective gain, but hurts the
+individuals that have originally a larger amount in receipts. This may not be a
+problem, though, and may actually be the most fair way to handle the situation
+if the number of shared receipts in the group is high.</p>
+<p>Another way (method 2) is for every person to keep enough of their receipts so
+that they reach the limit (if they can, of course) and add the rest to the
+group's surplus collection. The receipts from the surplus collection are then
+distributed to those that don't have enough receipts to reach the limit on
+their own.  Any remaining receipts are then either  returned to their original
+owners or equally split within the group.</p>
+<p>A variation of the previous method is method 3. In this case we use limit +
+15000€ for the private receipts, so that individuals get the maximum benefit
+from their receipts. Unfortunately, this method rarely leaves any receipts for
+the surplus and is quite unfair if there is a large number of shared receipts.</p>
+<p>Methods 4 and 5 assume that each receipt can be easily identified as shared or
+non-shared. In method 4 individuals keep only the receipts that are non-shared
+and add the shared receipts to the surplus. In method 5 individuals first use
+their non-shared receipts and then start using the shared ones until they reach
+the limit. If the receipts were originally distributed randomly, then method 4
+is the fairest way to handle things. On the other hand, if shared receipts were
+originally given to the person with the highest expense then perhaps method 5
+is a bit more fair.</p>
+<h2 id="handling-np-completeness">Handling NP-completeness</h2>
+<p>Whatever way you choose to help your friends, the same basic problem must be
+solved: how can you evenly partition a set of receipts among a number of
+individuals?</p>
+<p>This problem, as innocent as it may look, is actually NP-complete! Its official
+name is the &quot;partition problem&quot; and in its optimization version is stated as:</p>
+<p>Partition a multiset of integers S into n subsets <em>S<sub>1</sub>,
+S<sub>2</sub>, ..., S<sub>n</sub></em> such that <em>max(sum(S<sub>1</sub>),
+sum(S<sub>2</sub>), ..., sum(S<sub>n</sub>))</em> is minimized.</p>
+<p>In plain words, split a multiset of integers into n subsets as evenly (as far
+as the sum of each subset is concerned) as possible. The classic version
+involves only two subsets. The difficulty lies in the fact that we are not
+allowed to split each integer (receipt amount in our case) arbitrarily.</p>
+<p>Being NP-complete practically means that in the worst case we have to go
+through all the partitioning combinations to find the best. The combinations
+being persons<sup>receipts</sup>, this is <em>not</em> what I call a fun past-time.</p>
+<p>So, is this all part of an evil plot by the tax service to get our hard-earned
+income? Even if it is, we are not completely helpless! The partition problem is
+often called the &quot;Easiest Hard Problem&quot;. The reason is that under some
+conditions, which have been extensively studied, there are heuristic methods
+that provide very good results.</p>
+<p>These conditions state that if we take <em>n</em> numbers randomly selected from
+the range <em>[1, 2<sup>m</sup>]</em> then if <em>k = m / n &lt; 1 ( ⇒ m &lt; n)</em>
+there is a large probability that there exist many perfect partitions. Of
+course this also works for numbers from arbitrary ranges because we can always
+map a range <em>[a, b]</em> to <em>[1, b - a + 1]</em>. On the other hand if
+<em>k &gt; 1</em> the probability of perfect partitions existing for a given
+multiset abruptly drops.</p>
+<p>Intuitively, the above condition makes perfect sense: it is much more probable
+to be able to split a multiset into subsets with equal sums if that multiset
+has many small values (where small is relative to the cardinality of the set).
+As the values get larger and/or the set size becomes smaller it is much less
+probable to be able to find a perfect split.</p>
+<p>So, how does our problem instance fare with regard to this criterion?  First of
+all, we have to make a minor adjustment because the condition refers to
+integers but cash amounts are real numbers with two decimal digits.  This can
+be easily countered by expressing all amounts as euro-cents. The amount on each
+receipt is hardly ever outside the [1, 6553600] range (<em>~ 2<sup>23</sup></em>)
+in euro-cents (unless, of course, you end up buying a new yacht every time you
+go out for groceries). Also, let's be insanely over-conservative here and say
+that a normal person gets 3 receipts per week. These give us an <em>m</em> of 23
+and an <em>n</em> of 3 * 52 = 156, therefore <em>k = 23 / 156 &lt; 1</em>.</p>
+<p>Now that we know that there is a good chance of being able to solve the
+problem, how do we actually go about it? The algorithm is surprisingly
+straightforward. Of course, it does not strictly solve the problem, but it
+produces an approximate solution that is good enough for our purposes. The
+algorithm is:</p>
+<pre class="z-code"><code><span class="z-text z-plain">1. Sort the numbers in descending order   [ O(nlogn) on average ]
+2. Process each number (in sorted order): [ Θ(n) ]
+  2.1 Find the subset with the least sum  [ O(logp) using priority queues ]
+  2.2 Add the number to the subset        [ Θ(1) ]
+
+where n: number of receipts
+      p: number of persons
+</span></code></pre>
+<p>This gives us T(n, p) = O(nlogn + nlogp + n). For a constant number of persons
+this leads to T(n) = O(nlogn). Not bad for &quot;solving&quot; an NP-complete problem!
+This algorithm has been proved to produce results relatively close to the
+optimal solution. Its discrepancy (the difference in value of the sums of the
+produced subsets) is O(1/n). There are other  algorithms that can do a bit
+better, but they are considerably more complicated (and not worth it for our
+puny purpose).</p>
+<p>Finally, because “an ounce of action is worth a ton of theory”, I have
+developed a proof of concept application that implements some of the methods
+mentioned above. You can find
+<a href="https://code.launchpad.net/~afrantzis/+junk/tax-solidarity-trunk">here</a>. It is
+written in python and licensed under the AGPL 3.0+.</p>
+<p>Take that, tax service! YOUR NEFARIOUS SCHEME WILL NEVER SUCCEED!</p>
+<p><strong>References</strong></p>
+<ul>
+<li>
+<p>Karmarker, Narenda and Karp, Richard M., The Differencing Method of Set
+Partitioning, Techreport, UC Berkley, 1983</p>
+</li>
+<li>
+<p>Brian Hayes, The Easiest Hard Problem, American Scientist, March-April 2002</p>
+</li>
+<li>
+<p>Stephan Mertens, The Easiest Hard Problem: Number Partitioning,
+Computational Complexity and Statistical Physics, 2006</p>
+</li>
+</ul>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

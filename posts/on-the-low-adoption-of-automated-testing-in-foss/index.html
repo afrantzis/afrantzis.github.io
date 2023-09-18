@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - On the low adoption of automated testing in FOSS</title>
+<meta name="description" content="Thoughts about the reasons that keep Free and Open Source
+                 Software (FOSS) projects from adopting comprehensive automated
+                 testing">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         On the low adoption of automated testing in FOSS
+    </h1>
+    <span class="post-date">
+        October 15, 2018
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;on-the-low-adoption-of-automated-testing-in-foss&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A few times in the recent past I've been in the unfortunate position of using a
+prominent Free and Open Source Software (FOSS) program or library, and running
+into issues of such fundamental nature that made me wonder how those issues
+even made it into a release.</p>
+<p>In all cases, the answer came quickly when I realized that, invariably, the
+project involved either didn't have a test suite, or, if it did have one, it
+was not adequately comprehensive.</p>
+<p>I am using the term comprehensive in a very practical, non extreme way. I
+understand that it's often not feasible to test every possible scenario and
+interaction, but, at the very least, a decent test suite should ensure that
+under typical circumstances the code delivers all the functionality it promises
+to.</p>
+<p>For projects of any value and significance, having such a comprehensive
+automated test suite is nowadays considered a standard software engineering
+practice. Why, then, don't we see more prominent, and certainly valuable, FOSS
+projects employing this practice, or, when they do, why is it often employed
+poorly? <sup class="footnote-reference"><a href="#1">1</a></sup></p>
+<p>In this post I will highlight some of the reasons that I believe play a role in
+the low adoption of proper automated testing in FOSS projects, and argue why
+these reasons may be misguided. I will focus on topics that are especially
+relevant from a FOSS perspective, omitting considerations, which, although
+important, are not particular to FOSS.</p>
+<p>My hope is that by shedding some light on this topic, more FOSS projects will
+consider employing an automated test suite.</p>
+<p>As you can imagine, I am a strong proponent of automating testing, but this
+doesn't mean I consider it a silver bullet. I do believe, however, that it is
+an indispensable tool in the software engineering toolbox, which should only be
+forsaken after careful consideration.</p>
+<h2 id="1-underestimating-the-cost-of-bugs">1. Underestimating the cost of bugs</h2>
+<p>Most FOSS projects, at least those not supported by some commercial entity,
+don't come with any warranty; it's even stated in the various licenses!  The
+lack of any formal obligations makes it relatively inexpensive, both in terms
+of time and money, to have the occasional bug in the codebase. This means that
+there are fewer incentives for the developer to spend extra resources to try to
+safeguard against bugs. When bugs come up, the developers can decide at their
+own leisure if and when to fix them and when to release the fixed version.
+Easy!</p>
+<p>At first sight, this may seem like a reasonably pragmatic attitude to have.
+After all, if fixing bugs is so cheap, is it worth spending extra resources
+trying to prevent them?</p>
+<p>Unfortunately, bugs are only cheap for the developer, not for the users who may
+depend on the project for important tasks. Users expect the code to work
+properly and can get frustrated or disappointed if this is not the case,
+regardless of whether there is any formal warranty. This is even more
+pronounced when security concerns are involved, for which the cost to users can
+be devastating.</p>
+<p>Of course, lack of formal obligations doesn't mean that there is no driver for
+quality in FOSS projects. On the contrary, there is an exceptionally strong
+driver: professional pride. In FOSS projects the developers are in the
+spotlight and no (decent) developer wants to be associated with a low quality,
+bug infested codebase. It's just that, due to the mentality stated above, in
+many FOSS projects the trade-offs developers make seem to favor a reactive
+rather than proactive attitude.</p>
+<h2 id="2-overtrusting-code-reviews">2. Overtrusting code reviews</h2>
+<p>One of the development practices FOSS projects employ ardently is code reviews.
+Code reviews happen naturally in FOSS projects, even in small ones, since most
+contributors don't have commit access to the code repository and the original
+author has to approve any contributions. In larger projects there are often
+more structured procedures which involve sending patches to a mailing list or
+to a dedicated reviewing platform. Unfortunately, in some projects the trust on
+code reviews is so great, that other practices, like automated testing, are
+forsaken.</p>
+<p>There is no question that code reviews are one of the best ways to maintain and
+improve the quality of a codebase. They can help ensure that code is designed
+properly, it is aligned with the overall architecture and furthers the long
+term goals of the project. They also help catch bugs, but only some of them,
+some of the time!</p>
+<p>The main problem with code reviews is that we, the reviewers, are only human.
+We humans are great at creative thought, but we are also great at overlooking
+things, occasionally filling in the gaps with our own unicorns-and-rainbows
+inspired reality. Another reason is that we tend to focus more on the code
+changes at a local level, and less on how the code changes affect the system as
+a whole.  This is not an inherent problem with the process itself but rather a
+limitation of humans performing the process. When a codebase gets large enough,
+it's difficult for our brains to keep all the possible states and code paths in
+mind and check them mentally, even in a codebase that is properly designed.</p>
+<p>In theory, the problem of human limitations is offset by the open nature of the
+code.  We even have the so called Linus's law which states that &quot;given enough
+eyeballs, all bugs are shallow&quot;. Note the clever use of the indeterminate term
+&quot;enough&quot;. How many are enough? How about the qualitative aspects of the
+&quot;eyeballs&quot;? </p>
+<p>The reality is that most contributions to big, successful FOSS projects are
+reviewed on average by a couple of people. Some projects are better, most are
+worse, but in no case does being FOSS magically lead to a large number of
+reviewers tirelessly checking code contributions. This limit in the number of
+reviewers also limits the extent to which code reviews can stand as the only
+process to ensure quality.</p>
+<h2 id="3-it-s-not-in-the-culture">3. It's not in the culture</h2>
+<p>In order to try out a development process in a project, developers first need
+to learn about it and be convinced that it will be beneficial. Although there
+are many resources, like books and articles, arguing in favor of automated
+tests, the main driver for trying new processes is still learning about them
+from more experienced developers when working on a project. In the FOSS world
+this also takes the form of studying what other projects, especially the
+high-profile ones, are doing.</p>
+<p>Since comprehensive automated testing is not the norm in FOSS, this creates a
+negative network effect. Why should you bother doing automated tests if the
+high profile projects, which you consider to be role models, don't do it
+properly or at all?</p>
+<p>Thankfully, the culture is beginning to shift, especially in projects using
+technologies in which automated testing is part of the culture of the
+technologies themselves. Unfortunately, many of the system-level and middleware
+FOSS projects are still living in the non automated test world.</p>
+<h2 id="4-tests-as-an-afterthought">4. Tests as an afterthought</h2>
+<p>Tests as an afterthought is not a situation particular to FOSS projects, but it
+is especially relevant to them since the way they spring and grow can
+disincentivize the early writing of tests.</p>
+<p>Some FOSS projects start as small projects to scratch an itch, without any
+plans for significant growth or adoption, so the incentives to have tests at
+this stage are limited.</p>
+<p>In addition, many projects, even the ones that start with more lofty adoption
+goals, follow a &quot;release early, release often&quot; mentality. This mentality has
+some benefits, but at the early stages also carries the risk of placing the
+focus exclusively on making the project as relevant to the public as possible,
+as quickly as possible. From such a perspective, spending the probably limited
+resources on tests instead of features seems like a bad use of developer time.</p>
+<p>As the project grows and becomes more complex, however, more and more
+opportunities for bugs arise. At this point, some projects realize that adding
+a test suite would be beneficial for maintaining quality in the long term.
+Unfortunately, for many projects, it's already too late. The code by now has
+become test-unfriendly and significant effort is needed to change it.</p>
+<p>The final effect is that many projects remain without an automated test suite,
+or, in the best case, with a poor one.</p>
+<h2 id="5-missing-ci-infrastructure">5. Missing CI infrastructure</h2>
+<p>Automated testing delivers the most value if it is combined with a CI service
+that runs the tests automatically for each commit or merge proposal. Until
+recently, access to such services was difficult to get for a reasonably low
+effort and cost. Developers either had to set up and host CI themselves, or pay
+for a commercial service, thus requiring resources which unsponsored FOSS
+projects were unlikely to be able to afford.</p>
+<p>Nowadays, it's far easier to find and use free CI services, with most major
+code hosting platforms supporting them. Hopefully, with time, this reason will
+completely cease being a factor in the lack of automated testing adoption.</p>
+<h2 id="6-not-the-hacker-way">6. Not the hacker way</h2>
+<p>The FOSS movement originated from the hacker culture and still has strong ties
+to it. In the minds of some, the processes around software testing are too
+enterprise-y, too 9-to-5, perceived as completely contrary to the creative and
+playful nature of hacking. </p>
+<p>My argument against this line of thought is that the hacker values technical
+excellence very highly, and, automated testing, as a tool that helps achieve
+such excellence, can not be inconsistent with the hacker way.</p>
+<p>Some pseudo-hackers may also argue that their skills are so refined that their
+code doesn't require testing. When we are talking about a codebase of any
+significant size, I consider this attitude to be a sign of inexperience and
+immaturity rather than a testament of superior skills.</p>
+<h2 id="epilogue">Epilogue</h2>
+<p>I hope this post will serve as a good starting point for a discussion about the
+reasons which discourage FOSS projects from adopting a comprehensive automated
+test suite. Identifying both valid concerns and misconceptions is the first
+step in convincing both fledging and mature FOSS projects to embrace automated
+testing, which will hopefully lead to an improvement in the overall quality of
+FOSS.</p>
+<p><sup class="footnote-reference"><a href="#1">1</a></sup> See my <a href="https://afrantzis.com/posts/metrics-for-test-suite-comprehensiveness/">follow-up
+post</a> for some data
+supporting the premise that FOSS projects don't typically employ
+<em>comprehensive</em> automated testing,</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

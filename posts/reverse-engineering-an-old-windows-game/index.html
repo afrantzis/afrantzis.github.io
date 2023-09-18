@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - Reverse engineering an old Windows game for fun and compatibility</title>
+<meta name="description" content="Reverse engineering an old Windows game to understand why
+                 it didn&#x27;t work with the Wayland driver for Wine">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         Reverse engineering an old Windows game for fun and compatibility
+    </h1>
+    <span class="post-date">
+        December 31, 2022
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;reverse-engineering-an-old-windows-game&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>A few months ago I decided to revisit <a href="https://en.wikipedia.org/wiki/The_Last_Express">The Last
+Express</a>, one of the most
+unique adventure games of the 1990s. Since the version I have (from 1997)
+provided a Windows executable, I decided to run it using the Wayland driver for
+Wine. Eager to treat myself to a nostalgic journey, I ran the game and saw...
+nothing! I could hear the ominous menu music, but all I got was a minimized
+window which completely ignored my attempts at restoration. I tried the game
+with the Wine X11 driver and it worked as expected.</p>
+<p>Disappointed, but also determined to get this working with the Wayland driver, I
+ran the game with Wine debug logging turned on. The strange minimization
+behavior led me to turn my attention to the <code>SetWindowPos</code> and <code>ShowWindow</code>
+calls, hoping that I would get some insight about what was affecting the window
+state. Here is what I got for the game start up, with some additional comments:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window being created and resized to 640x480</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000037</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=5, was_visible 0</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000043</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after 0xffffffff, 0,0 (1600x920</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000070</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000003</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000050</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (0x0</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000037</span>
+<span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window is minimized (6=SW_MINIMIZE)</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=6, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=6</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>32000</span>,-32000 (160x24</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008174</span>
+</span></code></pre>
+<p>When trying to restore the minimized window I got:</p>
+<pre data-lang="sh" class="language-sh z-code"><code class="language-sh" data-lang="sh"><span class="z-source z-shell z-bash"><span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## Game window is restored to 640x480...</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=9, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=9</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008120</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000014</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> 0,0 (640x480</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00000050</span>
+<span class="z-comment z-line z-number-sign z-shell"><span class="z-punctuation z-definition z-comment z-begin z-shell">#</span></span><span class="z-comment z-line z-number-sign z-shell">## ...but then immediately minimized again!</span><span class="z-comment z-line z-number-sign z-shell">
+</span><span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:show_window</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e, cmd=6, was_visible 1</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:waylanddrv:WAYLAND_ShowWindow</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd=0x1005e cmd=6</span>
+<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">trace:win:NtUserSetWindowPos</span></span><span class="z-meta z-function-call z-arguments z-shell"> hwnd 0x1005e, after (nil</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"><span class="z-variable z-parameter z-option z-shell"><span class="z-punctuation z-definition z-parameter z-shell"> -</span>32000</span>,-32000 (160x24</span><span class="z-meta z-function-call z-shell"></span>)<span class="z-meta z-function-call z-shell"><span class="z-variable z-function z-shell">,</span></span><span class="z-meta z-function-call z-arguments z-shell"> flags 00008174</span>
+</span></code></pre>
+<p>It seemed that some logic was forcing the window to always become minimized.
+After briefly exploring the possibility of the Wayland driver or Wine core doing
+something fancy, I reached the conclusion that the minimization logic lived in
+the application itself.</p>
+<p>Why did the application minimize itself when running with the Wayland driver? A
+mystery befitting the theme of the game itself!</p>
+<p>In order to gain more insights, I had to take a peek into the inner workings
+of the game. I loaded the <code>_le.exe</code> executable in Ghidra, analyzed it with
+the default options and I searched for symbols references to <code>ShowWindow</code>:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-symrefs.png" alt="ghidra-le-symrefs.png" /></p>
+<p>The first entry was for the location within the <a href="https://learn.microsoft.com/en-us/windows/win32/debug/pe-format#import-address-table">Import Address Table
+(IAT)</a>
+which the dynamic linker will fill in with the address of the
+<code>CWnd::ShowWindow</code> function from <code>MFC42.DLL</code>.</p>
+<p>The second entry was the <code>CWnd::ShowWindow</code> thunk function within <code>_le.exe</code>,
+which transfers control to the real <code>CWnd::ShowWindow</code> function by using
+the address from the IAT location described above:</p>
+<pre data-lang="asm" class="language-asm z-code"><code class="language-asm" data-lang="asm"><span class="z-source z-assembly"><span class="z-entity z-name z-function z-assembly">0</span><span class="z-entity z-name z-function z-assembly">0</span><span class="z-entity z-name z-function z-assembly">4</span><span class="z-entity z-name z-function z-assembly">a</span><span class="z-entity z-name z-function z-assembly">8</span><span class="z-entity z-name z-function z-assembly">9</span><span class="z-entity z-name z-function z-assembly">9</span><span class="z-entity z-name z-function z-assembly">6</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-keyword z-control z-assembly">JMP</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-support z-function z-directive z-assembly">dword</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-support z-function z-directive z-assembly">ptr</span><span class="z-entity z-name z-function z-assembly"> </span><span class="z-source z-assembly">[</span><span class="z-source z-assembly">-</span><span class="z-entity z-name z-function z-assembly">&gt;</span><span class="z-entity z-name z-function z-assembly">M</span><span class="z-entity z-name z-function z-assembly">F</span><span class="z-entity z-name z-function z-assembly">C</span><span class="z-entity z-name z-function z-assembly">4</span><span class="z-entity z-name z-function z-assembly">2</span><span class="z-entity z-name z-function z-assembly">.</span><span class="z-entity z-name z-function z-assembly">D</span><span class="z-entity z-name z-function z-assembly">L</span><span class="z-entity z-name z-function z-assembly">L</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">C</span><span class="z-entity z-name z-function z-assembly">W</span><span class="z-entity z-name z-function z-assembly">n</span><span class="z-entity z-name z-function z-assembly">d</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">:</span><span class="z-entity z-name z-function z-assembly">S</span><span class="z-entity z-name z-function z-assembly">h</span><span class="z-entity z-name z-function z-assembly">o</span><span class="z-entity z-name z-function z-assembly">w</span><span class="z-entity z-name z-function z-assembly">W</span><span class="z-entity z-name z-function z-assembly">i</span><span class="z-entity z-name z-function z-assembly">n</span><span class="z-entity z-name z-function z-assembly">d</span><span class="z-entity z-name z-function z-assembly">o</span><span class="z-entity z-name z-function z-assembly">w</span><span class="z-source z-assembly">]</span>
+</span></code></pre>
+<p>This import immediately provided a hint that the game was using Microsoft
+Foundation Classes, i.e., object-oriented wrappers around the Win32 API, and as
+such I should be on the lookout for standard object-oriented patterns.</p>
+<p>The thunk function is what the application actually calls internally, and in
+the list above I could see several references to it. Alas, I checked the code
+at each reference location, but none was passing <code>6</code> (<code>SW_MINIMIZE</code>) as the
+show command. Could there be other references to the <code>CWnd::ShowWindow</code> thunk
+that Ghidra was missing?</p>
+<p>I decided to get a second opinion from <code>radare2</code>:</p>
+<pre class="z-code"><code><span class="z-text z-plain">$ radare2 -A _le.exe
+[x] Analyze all flags starting with sym. and entry0 (aa)
+[x] Analyze function calls (aac)
+[x] Analyze len bytes of instructions for references (aar)
+[x] Finding and parsing C++ vtables (avrr)
+[x] Type matching analysis for all functions (aaft)
+[x] Propagate noreturn information (aanr)
+[x] Use -AA or aaaa to perform additional experimental analysis.
+[0x004a8cf0]&gt; axt 0x004a8996
+(nofunc) 0x40fbe8 [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45a37e [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045a480 0x45a54a [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45af0e [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45afa7 [CALL] call sub.MFC42.DLL_Ordinal_6215
+(nofunc) 0x45b018 [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045b940 0x45b9a4 [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045b940 0x45b9ea [CALL] call sub.MFC42.DLL_Ordinal_6215
+fcn.0045ba20 0x45bb92 [CALL] call sub.MFC42.DLL_Ordinal_6215
+</span></code></pre>
+<p>There were indeed more references to the <code>CWnd::ShowWindow</code> thunk. I noted
+that the references Ghidra was missing didn't belong to any known function
+(<code>(nofunc)</code> in radare2), and that was the reason they weren't detected by
+default. The solution was to rerun Ghidra's analysis with the &quot;Aggressive
+Instruction Finder&quot; option turned on, which gave me the following references:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-symrefs-aggresive.png" alt="ghidra-le-symrefs-aggresive.png" /></p>
+<p>Note that the <code>0x45a37e</code> reference was still missing from Ghidra. I was able to
+to add it by manually marking the region as code (in fact the relevant function
+seems to start at <code>0x45a340</code>). In the end it didn't matter, though, since that
+particular invocation was using the <code>9 (SW_RESTORE)</code> command, so was not
+relevant for our investigation.</p>
+<p>From the updated reference list above there were two that involved a
+minimization command, at <code>0x45af0e</code> and <code>0x45afa7</code>. The function at <code>0x45ae10</code>
+which contained the <code>0x45af0e</code> reference was decompiled by Ghidra as:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ae10.png" alt="ghidra-le-decompile-45ae10.png" /></p>
+<p>Although the high-level flow of this function was clear enough, I must say I
+didn't become more enlightened about the condition(s) that could lead to
+minimization. A quick look at some of the invoked functions indicated that a
+deeper investigation was required to understand how all this works, so I
+decided to move to the next function and revisit later, if needed.</p>
+<p>The second reference <code>0x45afa7</code> was part of the of the <code>0x45af70</code> function:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70.png" alt="ghidra-le-decompile-45af70.png" /></p>
+<p>This was more promising, with a very clear check affecting minimization at
+the start of the function! As I could see from the decompiler output, the first
+argument was effectively a <code>CWnd *</code>. The unconditional call to
+<code>CWnd::OnDisplayChange</code> at the end allowed me to reasonably (and ultimately
+correctly) assume that this function was in fact an override of the
+<code>OnDisplayChange</code> method for a custom class inheriting from <code>CWnd</code>, so I
+named this function <code>LExpressCWnd::OnDisplayChange</code>.</p>
+<p>The documentation for <code>CWnd::OnDisplayChange</code> was (and still is) surprisingly
+scarce online, but in a <a href="https://learn.microsoft.com/en-us/cpp/porting/visual-cpp-change-history-2003-2015">Microsoft C/C++
+changelog</a>
+I found the following:</p>
+<blockquote>
+<p>CWnd::OnDisplayChange changed to (UINT, int, int) instead of (WPARAM, LPARAM)
+so that the new ON_WM_DISPLAYCHANGE macro can be used in the message map.</p>
+</blockquote>
+<p>Since the game predated these changes, I determined that <code>param_1</code>
+and <code>param_2</code> were really <code>wparam</code> and <code>lparam</code> of the corresponding
+<code>WM_DISPLAYCHANGE</code> message. From the <code>WM_DISPLAYCHANGE</code>
+<a href="https://learn.microsoft.com/en-us/windows/win32/gdi/wm-displaychange">documentation</a>:</p>
+<blockquote>
+<p><em>wParam</em><br />
+The new image depth of the display, in bits per pixel.<br />
+<em>lParam</em><br />
+The low-order word specifies the horizontal resolution of the screen.<br />
+The high-order word specifies the vertical resolution of the screen.</p>
+</blockquote>
+<p>The pieces of the puzzle finally started to fall into place! Taking into
+account the new information I updated the decompiled source like so:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70-16bpp.png" alt="ghidra-le-decompile-45af70-16bpp.png" /></p>
+<p>There was a lot missing still, but the main takeway, in the highlighted part of
+the code above, was that if the display mode was changed to one that did not
+use 16 bits per pixel, the application unceremoniously minimized itself!</p>
+<p>Indeed, in that older version of the Wayland driver for Wine we were choosing a
+32-bit mode regardless of what the application specified. This worked for most
+DirectX games since Wine internally deals with the inconsistency. However, <em>The
+Last Express</em> explicitly checks the bits per pixel value sent with the
+<code>WM_DISPLAYCHANGE</code> message and our ploy is exposed!</p>
+<p>I updated the Wayland driver to properly set the <code>WM_DISPLAYCHANGE</code> bits per
+pixel parameter, and verified that this fixed the minimization problem. I was
+finally able to continue my (train) trip down memory lane!</p>
+<p>You can see <em>The Last Express</em> in action with the Wayland driver
+<a href="https://www.youtube.com/watch?v=lZ-MK72Kyp8&amp;t=615s">here</a>.</p>
+<h2 id="bonus-material">Bonus material</h2>
+<p>Although this partial analysis was enough to allow me to resolve the task at
+hand, I remained curious about some of the details of display configuration and
+the unexplained aspects of the <code>LExpressCWnd::OnDisplayChange</code> function. To
+explore further, I tracked symbol references to the <code>ChangeDisplaySettingsA</code>
+function from <code>USER32.DLL</code> and came across two invocations in <code>_le.exe</code>. I will
+spare you the details, but one reference was from a function that I determined
+configured the display mode for the game (which I named
+<code>LExpressCWnd::ConfigureDisplay</code> at <code>0x45ba20</code>), and the other from a function
+that restored the original mode (<code>LExpressCwnd::RestoreDisplay</code> at <code>0x45bbd0</code>).
+One interesting point about these invocations was that the code was tracking
+the kind of display configuration operation the game was performing, by using
+fields in <code>LExpressCWnd</code>. For example, in <code>LExpressCWnd::ConfigureDisplay</code>
+there was the following decompiled snippet (after giving some more descriptive
+names):</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ba20-snippet.png" alt="ghidra-le-decompile-45ba20-snippet.png" /></p>
+<p>The <code>LExpressCWnd::configuring_display</code> field and the corresponding
+<code>LExpressCWnd::restoring_display</code> used in <code>LExpressCWnd::RestoreDisplay</code>, were
+two of the mysterious fields used in <code>LExpressCWnd::OnDisplayChange</code>. The idea
+is that <code>ChangeDisplaySettingsA</code> sends the <code>WM_DISPLAYCHANGE</code> message
+synchronously, and thus <code>LExpressCWnd::OnDisplayChange</code> is called in the
+context of that invocation, reading the values of these fields.</p>
+<p>With all this new information and a lot of additional exploration in the
+executable, I reached this more complete version of
+<code>LExpressCWnd::OnDisplayChange</code>:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45af70-final.png" alt="ghidra-le-decompile-45af70-final.png" /></p>
+<p>Fortuitously, the discovery of the
+<code>LExpressCWnd::ConfigureDisplay/RestoreDisplay</code> functions also helped to shed
+some light on the mysterious function at <code>0x45ae10</code> which we encountered
+earlier in this post. My best guess about that function was that it handles the
+(de)activation of the game window, so I named it <code>LExpressCWnd::OnActivate</code>. On
+activation it increases the game thread priority and configures the display
+mode (if in fullscreen mode). On deactivation it sets the game thread priority
+to normal, restores the display mode and minimizes the window. My final
+decompilation looks like:</p>
+<p><img src="https://afrantzis.com/posts/reverse-engineering-an-old-windows-game/ghidra-le-decompile-45ae10-final.png" alt="ghidra-le-decompile-45ae10-final.png" /></p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

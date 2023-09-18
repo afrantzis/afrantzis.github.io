@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - A Pixel Format Guide (to the galaxy)</title>
+<meta name="description" content="An introduction to the Pixel Format Guide — a collection of documents and an accompanying tool which aim to help people navigate the wilderness of pixel format definitions">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         A Pixel Format Guide (to the galaxy)
+    </h1>
+    <span class="post-date">
+        October  5, 2017
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;a-pixel-format-guide-to-the-galaxy&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <p>I spend a lot of my time in various corners of the graphics domain of the FOSS
+world. In my time there I frequently have to deal with a variety of pixel
+formats definitions. Every graphics API and project has its own way of
+describing and naming pixel formats — the different flavors used by Vulkan,
+OpenGL, Mesa, Gallium, Wayland, DRM, GBM, Pixman, Mir and SDL are just a few of
+the beasts one can encounter in the graphics wilderness.</p>
+<p>It could be my aging memory, but, for some reason, I never seem to be able to
+remember how to interpret all the different formats. &quot;How are the components
+laid out in memory?&quot;, &quot;Does it matter if the system is little-endian or
+big-endian?&quot; are some of the questions I often have to look up, with varying
+degrees of success.</p>
+<p>It turns out that I am not the only one facing this issue. It's not uncommon
+for developers to misinterpret pixel formats, often with entertaining and
+psychedelic effects. If you are lucky you may catch a glimpse of uncanny blue
+foxes running under alien red skies.</p>
+<p>Despite the potential for entertainment, this problem is a constant cause of
+frustration for developers. I finally decided to do something about it — I have
+started the Pixel Format Guide.</p>
+<p>The <a href="https://afrantzis.github.io/pixel-format-guide/">Pixel Format Guide</a>
+consists of two components. The first is the guide itself — a collection of
+documents describing how to interpret the pixel format definitions of various
+APIs and projects.</p>
+<p>The second component is the <a href="https://github.com/afrantzis/pixel-format-guide">pfg
+tool</a> which performs the
+interpretation of pixel formats automatically. Did you ever wonder how the
+GL_RGBA with GL_UNSIGNED_INT_2_10_10_10_REV <a href="https://afrantzis.github.io/pixel-format-guide/opengl.html">OpenGL pixel
+format</a> is laid out
+in memory?  Now it's easy to figure it out:</p>
+<div class="nowrap">
+<pre class="z-code"><code><span class="z-text z-plain">$ python3 -m pfg describe GL_RGBA+GL_UNSIGNED_INT_2_10_10_10_REV
+Format:               GL_RGBA+GL_UNSIGNED_INT_2_10_10_10_REV
+Described as:         Native 32-bit type
+Native type:          M                              L
+                      AABBBBBBBBBBGGGGGGGGGGRRRRRRRRRR
+Memory little-endian: 0        1        2        3
+                      M      L M      L M      L M      L
+                      RRRRRRRR GGGGGGRR BBBBGGGG AABBBBBB
+Memory big-endian:    0        1        2        3
+                      M      L M      L M      L M      L
+                      AABBBBBB BBBBGGGG GGGGGGRR RRRRRRRR
+</span></code></pre>
+</div>
+<p>How about the WL_DRM_FORMAT_ARGB8888 <a href="https://afrantzis.github.io/pixel-format-guide/wayland_drm.html">Wayland-DRM
+format</a>?
+Again, it's easy:</p>
+<div class="nowrap">
+<pre class="z-code"><code><span class="z-text z-plain">$ python3 -m pfg describe WL_DRM_FORMAT_ARGB8888
+Format: WL_DRM_FORMAT_ARGB8888
+Described as: Bytes in memory
+Memory little-endian: 0        1        2        3
+                      M      L M      L M      L M      L
+                      BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+Memory big-endian:    0        1        2        3
+                      M      L M      L M      L M      L
+                      BBBBBBBB GGGGGGGG RRRRRRRR AAAAAAAA
+</span></code></pre>
+</div>
+<p>The Pixel Format Guide is a work in progress. It currently supports many
+Vulkan, OpenGL and Wayland(-DRM) formats, and it's constantly growing. This
+project was conceived as a collaborative endeavor, not a one-person effort (but
+I'll do my best), so, if you are familiar with a pixel format family, please
+consider contributing to the guide and the python tool!</p>
+<p>Before signing off I would like to thank my employer,
+<a href="https://www.collabora.com">Collabora</a>, for sponsoring my work on the Pixel
+Format Guide as an R&amp;D project.</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>

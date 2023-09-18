@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+      <link rel="stylesheet" href="/fonts.css">
+      <link rel="stylesheet" href="/afrantzis.css">
+
+      <meta name="author" content="Alexandros Frantzis">
+      
+<title>A mind forever voyaging - glmark2: more than a benchmark</title>
+<meta name="description" content="Introducing the glmark2 OpenGL (ES) 2.0 benchmark">
+
+    </head>
+
+    <body>
+        <div class="nav">
+            <ul>
+                <a href="/"><li>Home</li></a>
+                <a href="/posts"><li>Posts</li></a>
+                <a href="/projects"><li>Projects</li></a>
+                <a href="/about"><li>About</li></a>
+                <a href="/atom.xml" class="feed">
+                    <li>
+                        <img class="translucent" style="height:0.75em" src="/feed.png">
+                    </li>
+                </a>
+            </ul>
+            <div>
+                <img style="width:100%" src="/header.jpg">
+            </div>
+        </div>
+
+        <div class="content">
+            
+
+<div class="post">
+    <h1 class="post-title">
+         glmark2: more than a benchmark
+    </h1>
+    <span class="post-date">
+        December 16, 2011
+        &ensp;
+        <a href=https:&#x2F;&#x2F;afrantzis.com&#x2F;posts&#x2F;glmark2-more-than-a-benchmark&#x2F;>
+            <img class="translucent" style="height:0.75em" src="/permalink.png">
+        </a>
+    </span>
+    <h2 id="genesis">Genesis</h2>
+<p>Almost 1.5 year ago, we (at <a href="https://www.linaro.org">Linaro</a> set out on a
+mission to provide consolidation and optimization of GNU/Linux for ARM
+hardware. Soon after, the Linaro Graphics Working Group was formed to focus on
+the graphics and user interface parts of the stack. Like all other groups
+within Linaro, the Graphics WG strived (and still does, of course!) to provide
+palpable and measurable improvements. One of the tools we needed to ensure this
+goal, and we found was missing, was a Free Software OpenGL ES 2.0 benchmark.</p>
+<p>Why did we even care about this when there surely are professional, proprietary
+alternatives used in the industry? The answer is simple: we couldn't imagine
+doing this any other way.  Linaro, both as an organization and as individuals,
+strongly believe that Free Software is good for society. Even if we didn't
+believe in the ethics of Free Software, using a proprietary solution would have
+been the wrong choice from a practical point of view. Many of our goals, which
+reach beyond plain benchmarking, would be very difficult to achieve with a
+proprietary solution. We wanted a tool that was freely (in every sense)
+available to all, so that it would provide a common reference point for all
+developers and users that didn't have access to the proprietary tools.</p>
+<p>Instead of starting completely from scratch, we leveraged an existing GPL
+licensed desktop GL benchmark, called glmark, and ported it to support OpenGL
+ES 2.0. We decided to call the new benchmark glmark2. Although OpenGL ES 2.0
+was the primary goal for us (this API is prevalent in the ARM world), we
+continued to treat desktop OpenGL as a first class citizen. This mindset
+eventually led to what we call the &quot;subset approach&quot;: using only the common
+subset of desktop OpenGL 2.1 and OpenGL ES 2.0 APIs to produce a single, easily
+maintainable code base, working happily with both versions.</p>
+<h2 id="goals">Goals</h2>
+<p>After the initial porting to OpenGL ES 2.0 was done, and as we continued to
+work on new features, a set of goals for glmark2 began to crystallize in our
+minds. These goals transcended the limits of plain benchmarking, and can be
+summarized as: flexible benchmarking, best practices, validation and educating
+new developers.</p>
+<h3 id="flexible-benchmarking">Flexible benchmarking</h3>
+<p>The primary function of glmark2 is, of course, to provide a comprehensive
+benchmarking suite. What differentiates glmark2 from other tools is the unique
+flexibility it delivers. Most existing benchmarking tools just provide the
+option to run benchmarks from a predefined fixed set. For glmark2, however, we
+decided that we didn't want to force our own selections on users. In this
+spirit, glmark2 offers a suite of scenes that can be used to evaluate many
+aspects of OpenGL (ES) 2.0 performance. The way in which each scene is rendered
+is configurable through a set of scene-specific options, that range from the
+simple, like selecting the texturing mode for the texturing scene, to the
+complex, like specifying the convolution matrix for the GPU convolution scene.
+A benchmark is just a scene instantiated with specific options.</p>
+<p>For the casual user, who just wants to get an overview of the graphics stack's
+performance, glmark2 comes with a predefined set of default benchmarks. For
+users that need to explore a particular aspect in more depth, we have made it
+trivial to specify and execute a custom set of benchmarks.</p>
+<p>Regarding the actual benchmark content, we draw inspiration from typical
+applications that use OpenGL, like games, modern user interfaces and our own
+experience about important features. We have given glmark2 a focus on
+fundamental techniques used in 3D and 2.5D graphics, so most scenes are
+relatively simple, but we don't shy way from other kinds of benchmarks. We
+already have low-level benchmarks for specific shader features, and we are
+planning to add high-level benchmarks involving more complex and visually
+intriguing scenes in the future.</p>
+<h3 id="best-practices">Best practices</h3>
+<p>The flexibility offered by our option-driven benchmarking approach lends itself
+naturally to another one of our goals: answering developer questions and
+providing best practices. &quot;Should I use X or Y to get the best
+performance/quality/of both worlds on this class of hardware?&quot; is a common form
+of question among developers. For example, we have implemented a benchmark to
+test how different methods of uploading data to the GPU (glBufferData vs
+glMapBuffer, interleaved buffers vs separate buffers etc) affect performance.
+We hope that the ease with which developers can use different options will make
+it painless to perform targeted tests and eventually provide best practices
+advice.</p>
+<h3 id="validation">Validation</h3>
+<p>Besides measuring the graphics performance, we also care about output quality.
+That is, we want to validate the correctness of the graphics stack.  Of course,
+we don't want to perform validation manually, by having someone looking at
+pictures. We want the process to be automatic, ideally as part of our
+continuous integration efforts.</p>
+<p>To handle validation in glmark2 we added a special mode in which we just draw
+the first frame of each benchmark and fuzzily compare some pixel values against
+expected reference values. We rely on the 3D pipeline being deterministic, so,
+if a single pixel is correct, chances are that all pixels are correct. Is this
+a 100% robust validation solution? No, but it is more than enough for our
+needs; it's not our aim to provide a conformance suite.</p>
+<h3 id="educating-new-developers">Educating new developers</h3>
+<p>The last (but not least) goal we have for glmark2 is a surprising but important
+one: educating new developers.  We found that one of the main issues developers
+have when trying to move to modern, programmable 3D APIs, and in particular
+OpenGL ES 2.0, is the lack of concrete information on how to work with the new
+APIs, like EGL, and, also, how to apply fundamental 3D techniques that were
+straightforward before, e.g., lighting. Due to our focus on benchmarks for
+fundamental techniques, we are actually providing clear examples of how to
+achieve useful results. We make a special effort to ensure that both the C++
+and the shader code are understandable, including comments explaining why and
+how we are doing things. Developers can use the glmark2 code base as a
+launchpad to explore the wonders of modern 3D graphics.</p>
+<p>Our journey with glmark2 has been very exciting so far, and the future looks
+brighter than ever! We are constantly working on new features, and the recent
+addition of support for Android has made glmark2 one of the most versatile Free
+Software 3D benchmarking tools available. You can learn more about what we are
+planning by visiting our <a href="https://blueprints.launchpad.net/glmark2">blueprints</a>
+page.</p>
+<p>What are you waiting for? Grab <a href="https://launchpad.net/glmark2">glmark2</a> and
+start exploring!</p>
+
+</div>
+
+
+        </div>
+    </body>
+
+    <footer>
+        © 2010-2022 Alexandros Frantzis
+    </footer>
+</html>
